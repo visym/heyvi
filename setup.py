@@ -60,6 +60,9 @@ setup(
     install_requires=[
         "vipy",
         "torch","torchvision",
+        "pyyaml",  # legacy for models
+        "pytorch_lightning",  # training
+        "ujson",  # much faster 
     ],
     keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[

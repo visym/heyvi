@@ -3,16 +3,12 @@ import sys
 import random
 import torch
 import vipy
-import vipy.dataset.meva
+import vipy.data.meva
 import shutil
 import numpy as np
 from vipy.util import remkdir, filetail, readlist, tolist, filepath
 from datetime import datetime
-from heyvi.video import Video
 from heyvi.model.yolov3.network import Darknet
-from heyvi.globals import print
-import heyvi.label
-import heyvi.dataset
 import vipy.activity
 import itertools
 import copy
@@ -114,7 +110,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._class_to_index = {'car_drops_off_person': 0, 'car_picks_up_person': 1, 'car_reverses': 2, 'car_starts': 3, 'car_stops': 4, 'car_turns_left': 5, 'car_turns_right': 6, 'hand_interacts_with_person_highfive': 7, 'person': 8, 'person_abandons_object': 9, 'person_carries_heavy_object': 10, 'person_closes_car_door': 11, 'person_closes_car_trunk': 12, 'person_closes_facility_door': 13, 'person_embraces_person': 14, 'person_enters_car': 15, 'person_enters_scene_through_structure': 16, 'person_exits_car': 17, 'person_exits_scene_through_structure': 18, 'person_holds_hand': 19, 'person_interacts_with_laptop': 20, 'person_loads_car': 21, 'person_opens_car_door': 22, 'person_opens_car_trunk': 23, 'person_opens_facility_door': 24, 'person_picks_up_object_from_floor': 25, 'person_picks_up_object_from_table': 26, 'person_purchases_from_cashier': 27, 'person_purchases_from_machine': 28, 'person_puts_down_object_on_floor': 29, 'person_puts_down_object_on_shelf': 30, 'person_puts_down_object_on_table': 31, 'person_reads_document': 32, 'person_rides_bicycle': 33, 'person_shakes_hand': 34, 'person_sits_down': 35, 'person_stands_up': 36, 'person_steals_object_from_person': 37, 'person_talks_on_phone': 38, 'person_talks_to_person': 39, 'person_texts_on_phone': 40, 'person_transfers_object_to_car': 41, 'person_transfers_object_to_person': 42, 'person_unloads_car': 43, 'vehicle': 44}
 
         self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()}        
-        self._class_to_shortlabel = heyvi.label.pip_to_shortlabel
+        self._class_to_shortlabel = pycollector.label.pip_to_shortlabel  # FIXME: remove dependency here
 
         if pretrained:
             self._load_pretrained()
@@ -310,7 +306,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
         self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()}        
         self._class_to_shortlabel = heyvi.label.pip_to_shortlabel
-        self._class_to_shortlabel.update( vipy.dataset.meva.d_category_to_shortlabel )
+        self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
         if pretrained:
             self._load_pretrained()
