@@ -59,6 +59,7 @@ setup(
     download_url='https://github.com/visym/heyvi/archive/%s.tar.gz' % version,
     install_requires=[
         "vipy",
+        "torch","torchvision",
     ],
     keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[
