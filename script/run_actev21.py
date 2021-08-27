@@ -2,18 +2,22 @@ import os
 from argparse import ArgumentParser
 import gc
 
+import vipy 
+import torch
+import heyvi.recognition
+import heyvi.detection
+import pycollector.version
+import pycollector.label
+import heyvi.version
 
-def process_chunk(videofilelist, activitylist, frameratelist, cliplist, strict=False, outvideo=False, do_spatial_localization=False, dt_spatial_localization=10):
+assert vipy.version.is_exactly('1.11.5')
+assert pycollector.version.is_exactly('0.2.8')
+assert heyvi.version.is_exactly('0.0.4')
 
-    import vipy  # installed via diva_evaluation_cli/src/implementation/setup.sh
-    import torch
-    import pycollector.recognition
-    import pycollector.detection
-    import pycollector.version
-    import pycollector.label
+
+def process_video(videofilelist, activitylist, frameratelist, cliplist, strict=False, outvideo=False, do_spatial_localization=False, dt_spatial_localization=10):
+
         
-    assert vipy.version.is_exactly('1.11.5')
-    assert pycollector.version.is_exactly('0.2.8')
     
     modeldir = vipy.util.filepath(os.path.abspath(__file__))
     trackmodel = os.path.join(modeldir, 'yolov5x.weights')
@@ -24,9 +28,9 @@ def process_chunk(videofilelist, activitylist, frameratelist, cliplist, strict=F
     assert torch.cuda.device_count() >= 4
     
     objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
-    track = pycollector.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, weightfile=trackmodel, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
+    track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, weightfile=trackmodel, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
     activities = list(pycollector.label.pip_plus_meva_to_meva.items())
-    detect = pycollector.recognition.ActivityTracker(gpus=[0,1,2,3], batchsize=64, modelfile=activitymodel, stride=3, activities=activities)   # stride should match tracker stride 4->3
+    detect = heyvi.recognition.ActivityTracker(gpus=[0,1,2,3], batchsize=64, modelfile=activitymodel, stride=3, activities=activities)   # stride should match tracker stride 4->3
 
     jsonlist = []
     outvideolist = []
@@ -98,14 +102,15 @@ if __name__ == '__main__':
     parser.add_argument("--nounonly", help="Visualize tracks only", action='store_true')    
     args = parser.parse_args()
     
-    import vipy
     assert args.outjson is None or vipy.util.isjsonfile(args.outjson), "invalid input"
     assert args.minconf >= 0 and args.minconf <= 1, "invalid input"
     
-    # Generate a visualization video for all activity detections in this video
+    # Generate a visualization video for all activity detections in this video:
+    #
     #   >>> python system.py --outfile=/path/to/overlay.mp4 --infile=/path/to/source.mp4 --framerate=30.0 --startframe=0 --endframe=1000
     #   >>> python system.py --infile=./actev-data-repo/corpora/VIRAT-V1/0400/VIRAT_S_040003_02_000197_000552.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
-    #   >>> python system.py --infile=./actev-data-repo/corpora/VIRAT-V1/0000/VIRAT_S_000007.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json 
+    #   >>> python system.py --infile=./actev-data-repo/corpora/VIRAT-V1/0000/VIRAT_S_000007.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
+    #
     (d,V) = process_chunk([args.infile], [], [args.framerate], [(args.startframe, args.endframe)], strict=False, outvideo=True)    
     v = vipy.video.Scene.from_json(V[0])
     if args.outjson:

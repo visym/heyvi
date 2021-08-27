@@ -393,7 +393,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class ActivityTracker(PIP_370k): 
-    def __init__(self, stride=1, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
         assert modelfile is not None, "Contact <info@visym.com> for access to non-public model files"
 
         super().__init__(pretrained=False, modelfile=modelfile, mlbl=mlbl, mlfl=mlfl)
@@ -445,8 +445,9 @@ class ActivityTracker(PIP_370k):
         lr = yh - p_null   # ~= log likelihood ratio
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] >= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
-        
-    def __call__(self, vi, topk=1, activityiou=0, mirror=False, minprob=0, trackconf=0.1, maxdets=None, lr_threshold=None, lr_merge_threshold=None, avgdets=None, throttle=False):
+
+
+    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -> tensor CxNxHxW

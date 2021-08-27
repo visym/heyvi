@@ -359,7 +359,8 @@ class FaceTracker(FaceDetector):
 class MultiscaleVideoTracker(MultiscaleObjectDetector):
     """MultiscaleVideoTracker() class"""
 
-    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=2, detbatchsize=None, gate=0):
+
+    def __init__(self, minconf=0.05, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.2, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=6, detbatchsize=None, gate=64):
         super().__init__(gpu=gpu, batchsize=batchsize, weightfile=weightfile)
         self._minconf = minconf
         self._miniou = miniou
