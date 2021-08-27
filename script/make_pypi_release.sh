@@ -10,6 +10,9 @@ git push
 
 # Make release
 cd ..
-git tag $1 -m "vipy-$1"
+git tag $1 -m "heyvi-$1"
 git push --tags origin master
-python3 setup.py sdist upload -r pypi
+
+twine upload dist/*
+python3 setup.py sdist bdist_wheel
+
