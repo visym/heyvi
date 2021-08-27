@@ -1,3 +1,1 @@
-# "Hey Vi"
-
-Project Vi
+# Project Vi
