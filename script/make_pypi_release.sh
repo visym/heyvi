@@ -13,8 +13,8 @@ cd ..
 git tag $1 -m "heyvi-$1"
 git push --tags origin master
 
-rm -rf dist/
-rm -rf heyvi.egg-info/
-
 python3 setup.py sdist bdist_wheel
 twine upload dist/*
+
+rm -rf dist/
+rm -rf heyvi.egg-info/
