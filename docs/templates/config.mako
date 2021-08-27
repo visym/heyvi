@@ -20,7 +20,7 @@
     # If set, format links to objects in online source code repository
     # according to this template. Supported keywords for interpolation
     # are: commit, path, start_line, end_line.
-    git_link_template = 'https://github.com/visym/vipy/blob/{commit}/{path}#L{start_line}-L{end_line}'
+    git_link_template = 'https://github.com/visym/heyvi/blob/{commit}/{path}#L{start_line}-L{end_line}'
     #git_link_template = 'https://gitlab.com/USER/PROJECT/blob/{commit}/{path}#L{start_line}-L{end_line}'
     #git_link_template = 'https://bitbucket.org/USER/PROJECT/src/{commit}/{path}#lines-{start_line}:{end_line}'
     #git_link_template = 'https://CGIT_HOSTNAME/PROJECT/tree/{path}?id={commit}#n{start-line}'
@@ -45,7 +45,7 @@
     # If set, insert Google Custom Search search bar widget above the sidebar index.
     # The whitespace-separated tokens represent arbitrary extra queries (at least one
     # must match) passed to regular Google search. Example:
-    #    google_search_query = 'inurl:github.com/visym/vipy  site:vipy.github.io  site:vipy.website'
+    #    google_search_query = 'inurl:github.com/visym/heyvi  site:heyvi.github.io  site:heyvi.website'
     google_search_query = ''
 
     # Enable offline search using Lunr.js. For explanation of 'fuzziness' parameter, which is
