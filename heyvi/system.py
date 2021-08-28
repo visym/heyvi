@@ -32,7 +32,19 @@ class YoutubeLive():
 
                 
 class Recorder():
-    """Record a livestream to an output video file"""
+    """Record a livestream to an output video file
+    
+    This will record an out streaming to the provided outfile
+
+    >>> R = Recorder('/tmp/out.mp4', framerate=5)
+    >>> R(vipy.video.Scene(url='rtsp://...', framerate=30), seconds=60*60)
+
+    To buffer to memory, you do not need this recorder, use (for small durations):
+
+    >>> v = vipy.video.Scene(url='rtsp://...', framerate=30).duration(seconds=3).load()
+
+    This will record three seconds from the provided RTSP stream.
+    """
     def __init__(self, outfile, fps=30, seconds=None):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
@@ -67,6 +79,7 @@ class Actev21():
     def __call__(self, vi, vs=None, minconf=0.04):
 
         assert isinstance(vi, vipy.video.Scene)
+        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url())
         assert vs is None or isinstance(vs, vipy.video.Stream)
         vs = vs if vs is not None else contextlib.nullcontext()        
         
@@ -79,26 +92,22 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vi = vi.mindim(960).framerate(5)
         with vs as s:
-            for (f, (vi,vc)) in enumerate(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, withclip=False)):
-
-                # Even if correct, it still does not contain the activities
-                # clip is off for rtsp streams since they are unsynchronized
-                #if s is not None and vc is not None:
-                #    for im in vc.clip(detect.temporal_support()-3, detect.temporal_support()):
-                #        s.write(self._annotator(im).rgb())
+            for (f, (vi,im)) in enumerate(zip(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1),  # activity detection 
+                                              vi.stream().frame(n=-detect.temporal_support()) if s is not None else itertools.repeat(None))):  # streaming visualization (n=delay)
+                if s is not None:
+                    s.write(self._annotator(im).rgb())
                 print('%s, frame=%d' % (str(vi), f))                    
                 
         vi.activityfilter(lambda a: a.category() not in ['person', 'person_walks', 'vehicle', 'car_moves'])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
-        vo = vo.rescale(srcdim / 960.0)  # upscale tracks back to source resolution
+        vo = vo.mindim(srcdim)  # upscale tracks back to source resolution
         gc.enable()
 
         return vo
 
 
     def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False):
-        return (v.mindim(512)
-                .activityfilter(lambda a: a.confidence() >= float(minconf))
+        return (v.activityfilter(lambda a: a.confidence() >= float(minconf))
                 .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
                           timestamp=True,
                           fontsize=6,
