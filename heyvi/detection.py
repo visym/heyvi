@@ -63,11 +63,11 @@ class FaceDetector(TorchNet):
     def __init__(self, weightfile=None, gpu=None):    
         indir = os.path.join(filepath(os.path.abspath(__file__)), 'model', 'face')
 
-        weightfile = os.path.join(indir, 'resnet-101_faster_rcnn_ohem_iter_20000.pth') if weightfile is None else weightfile
-        if not os.path.exists(weightfile) or not vipy.downloader.verify_sha1(weightfile, 'a759030540a4a5284baa93d3ef5e47ed40cae6d6'):
-            print('[heyvi.detection]: Downloading face detector weights ...')
-            os.system('wget -c https://dl.dropboxusercontent.com/s/rdfre0oc456t5ee/resnet-101_faster_rcnn_ohem_iter_20000.pth -O %s' % weightfile)  # FIXME: replace with better solution
-        assert vipy.downloader.verify_sha1(weightfile, 'a759030540a4a5284baa93d3ef5e47ed40cae6d6'), "Face detector download failed with SHA1='%s'" % (vipy.downloader.generate_sha1(weightfile))
+
+        weightfile = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/rdfre0oc456t5ee/resnet-101_faster_rcnn_ohem_iter_20000.pth',
+                                                vipy.util.tocache('resnet-101_faster_rcnn_ohem_iter_20000.pth'),  # set VIPY_CACHE env
+                                                sha1='a759030540a4a5284baa93d3ef5e47ed40cae6d6') if weightfile is None else weightfile
+        
         self._model = FaceRCNN(model_path=weightfile)
         #self._model.eval()  # Set in evaluation mode
 
@@ -96,11 +96,9 @@ class Yolov5(TorchNet):
         self._mindim = 640  # must be square
         indir = os.path.join(filepath(os.path.abspath(__file__)), 'model', 'yolov5')
         cfgfile = os.path.join(indir, 'models', 'yolov5x.yaml')        
-        weightfile = os.path.join(indir, 'yolov5x.weights') if weightfile is None else weightfile
-        if not os.path.exists(weightfile):
-            print('[heyvi.detection]: Downloading weights ...')
-            os.system('wget -c https://dl.dropboxusercontent.com/s/jcwvz9ncjwpoat0/yolov5x.weights -O %s' % weightfile)  # FIXME: replace with better solution
-            assert vipy.downloader.verify_sha1(weightfile, 'bdf2f9e0ac7b4d1cee5671f794f289e636c8d7d4'), "Object detector download failed"
+        weightfile = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/jcwvz9ncjwpoat0/yolov5x.weights',
+                                                vipy.util.tocache('yolov5x.weights'),  # set VIPY_CACHE env 
+                                                sha1='bdf2f9e0ac7b4d1cee5671f794f289e636c8d7d4') if weightfile is None else weightfile
 
         # First import: load yolov5x.pt, disable fuse() in attempt_load(), save state_dict weights and load into newly pathed model
         with torch.no_grad():
@@ -190,14 +188,13 @@ class Yolov3(TorchNet):
     def __init__(self, batchsize=1, weightfile=None, gpu=None):    
         self._mindim = 416  # must be square
         indir = os.path.join(filepath(os.path.abspath(__file__)), 'model', 'yolov3')
-        weightfile = os.path.join(indir, 'yolov3.weights') if weightfile is None else weightfile
         cfgfile = os.path.join(indir, 'yolov3.cfg')
         self._model = Darknet(cfgfile, img_size=self._mindim)
-        if not os.path.exists(weightfile) or not vipy.downloader.verify_sha1(weightfile, '520878f12e97cf820529daea502acca380f1cb8e'):
-            #vipy.downloader.download('https://www.dropbox.com/s/ve9cpuozbxh601r/yolov3.weights', os.path.join(indir, 'yolov3.weights'))
-            print('[heyvi.detection]: Downloading object detector weights ...')
-            os.system('wget -c https://dl.dropboxusercontent.com/s/ve9cpuozbxh601r/yolov3.weights -O %s' % weightfile)  # FIXME: replace with better solution
-        assert vipy.downloader.verify_sha1(weightfile, '520878f12e97cf820529daea502acca380f1cb8e'), "Object detector download failed"
+
+        weightfile = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/ve9cpuozbxh601r/yolov3.weights',
+                                                vipy.util.tocache('yolov3.weights'),  # set VIPY_CACHE env 
+                                                sha1='520878f12e97cf820529daea502acca380f1cb8e') if weightfile is None else weightfile
+        
         self._model.load_darknet_weights(weightfile)
         self._model.eval()  # Set in evaluation mode
         self._batchsize = batchsize        

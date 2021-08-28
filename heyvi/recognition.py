@@ -210,12 +210,10 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         
     def _load_pretrained(self):
 
-        pthfile = vipy.util.tocache('r3d50_KMS_200ep.pth')
-        if not os.path.exists(pthfile) or not vipy.downloader.verify_sha1(pthfile, '39ea626355308d8f75307cab047a8d75862c3261'):
-            print('[heyvi.recognition]: Downloading pretrained weights ...')
-            os.system('wget -c https://dl.dropboxusercontent.com/s/t3xge6lrfqpklr0/r3d50_kms_200ep.pth -O %s' % pthfile) 
-        assert vipy.downloader.verify_sha1(pthfile, '39ea626355308d8f75307cab047a8d75862c3261'), "SHA1 check failed"
-
+        pthfile = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/t3xge6lrfqpklr0/r3d50_kms_200ep.pth',
+                                                vipy.util.tocache('r3d50_KMS_200ep.pth'),  # set VIPY_CACHE env 
+                                                sha1='39ea626355308d8f75307cab047a8d75862c3261')
+        
         net = heyvi.model.ResNets_3D_PyTorch.resnet.generate_model(50, n_classes=1139)
         pretrain = torch.load(pthfile, map_location='cpu')
         net.load_state_dict(pretrain['state_dict'])
