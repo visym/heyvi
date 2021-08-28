@@ -79,10 +79,9 @@ class Actev21():
     def __call__(self, vi, vs=None, minconf=0.04):
 
         assert isinstance(vi, vipy.video.Scene)
-        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url())
-        assert vs is None or isinstance(vs, vipy.video.Stream)
-        vs = vs if vs is not None else contextlib.nullcontext()        
-        
+        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), "Use the Recorder() or buffer an RTSP stream before processing"
+        assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
+                
         objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
         track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
         activities = list(heyvi.label.pip_plus_meva_to_meva.items())
@@ -90,6 +89,7 @@ class Actev21():
         
         gc.disable()
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
+        vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
         with vs as s:
             for (f, (vi,im)) in enumerate(zip(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1),  # activity detection 
@@ -106,8 +106,8 @@ class Actev21():
         return vo
 
 
-    def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False):
-        return (v.activityfilter(lambda a: a.confidence() >= float(minconf))
+    def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
+        return (v.mindim(mindim).activityfilter(lambda a: a.confidence() >= float(minconf))
                 .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
                           timestamp=True,
                           fontsize=6,

@@ -447,7 +447,7 @@ class ActivityTracker(PIP_370k):
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] >= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
 
-    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True, withclip=False):
+    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -> tensor CxNxHxW
@@ -486,7 +486,7 @@ class ActivityTracker(PIP_370k):
                                     sm>=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
                         del logits, dets, videotracks  # torch garabage collection                                                
-                    yield vo if not withclip else (vo, vc)
+                    yield vo
 
         except Exception as e:                
             raise
