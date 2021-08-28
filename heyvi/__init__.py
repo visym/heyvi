@@ -16,6 +16,11 @@ Visym Labs <info@visym.com>
 
 # Import all subpackages
 import heyvi.version
+import heyvi.system
+import heyvi.recognition
+import heyvi.detection
+import heyvi.sensor
+
 
 __version__ = heyvi.version.VERSION
 

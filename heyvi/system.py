@@ -1,16 +1,14 @@
 import os
 import vipy
-
-import os
 import gc
-
 import torch
 import heyvi.recognition
 import heyvi.detection
 import pycollector.version
 import pycollector.label
 import heyvi.version
-
+import heyvi.label
+import contextlib
 
 
 class YoutubeLive():
@@ -35,54 +33,74 @@ class YoutubeLive():
                 
 class Recorder():
     """Record a livestream to an output video file"""
-    def __init__(self, outfile, fps=30):
+    def __init__(self, outfile, fps=30, seconds=None):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-
+        
     def __repr__(self):
         return '<heyvi.system.Recorder: %s>' % str(self._vo)
     
-    def __call__(self, vi):
+    def __call__(self, vi, seconds=None):
         assert isinstance(vi, vipy.video.Scene)
-        
+
+        vi = vi if seconds is None else vi.clone().clip(0, self._vo.framerate()*seconds)
         with self._vo.stream(overwrite=True) as s:
             for (k,im) in enumerate(vi.stream()):
-                print(k,im)
-                s.write(im)
-
-
+                print('%s, frame=%d' % (str(im), k))
+                s.write(im)                
+        return self._vo
+                
+                
 class Actev21():
     def __init__(self):
 
         assert vipy.version.is_exactly('1.11.7')
         assert heyvi.version.is_exactly('0.0.3')
-        #assert torch.cuda.device_count() >= 4
+        assert torch.cuda.device_count() >= 4
         
         self._activitymodel = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/ntvjg352b0fwnah/mlfl_v5_epoch_41-step_59279.ckpt',
                                                          vipy.util.tocache('mlfl_v5_epoch_41-step_59279.ckpt'),  # set VIPY_CACHE env 
                                                          sha1='c4457e5b2e4fa1462d552070c47cac9eb2833e47')
 
-    def __call__(self, vi):
+        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
+        
+    def __call__(self, vi, vs=None, minconf=0.04):
 
-        assert isinstance(vi, vipy.video.Video)
+        assert isinstance(vi, vipy.video.Scene)
+        assert vs is None or isinstance(vs, vipy.video.Stream)
+        vs = vs if vs is not None else contextlib.nullcontext()        
         
         objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
         track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
-        activities = list(pycollector.label.pip_plus_meva_to_meva.items())
+        activities = list(heyvi.label.pip_plus_meva_to_meva.items())
         detect = heyvi.recognition.ActivityTracker(gpus=[0,1,2,3], batchsize=64, modelfile=self._activitymodel, stride=3, activities=activities)   # stride should match tracker stride 4->3
-
+        
         gc.disable()
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
-        vi = vi.mindim(960).framerate(5)        
-        with vipy.util.Stopwatch() as t:
-            for (f,vi) in enumerate(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=0.04, maxdets=105, avgdets=70, throttle=True, activityiou=0.1)):   
-                print('%s, frame=%d' % (str(vi), f))
+        vi = vi.mindim(960).framerate(5)
+        with vs as s:
+            for (f, (vi,vc)) in enumerate(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, withclip=False)):
+
+                # Even if correct, it still does not contain the activities
+                # clip is off for rtsp streams since they are unsynchronized
+                #if s is not None and vc is not None:
+                #    for im in vc.clip(detect.temporal_support()-3, detect.temporal_support()):
+                #        s.write(self._annotator(im).rgb())
+                print('%s, frame=%d' % (str(vi), f))                    
                 
         vi.activityfilter(lambda a: a.category() not in ['person', 'person_walks', 'vehicle', 'car_moves'])   # remove background activities
-        vi.activityfilter(lambda a: strict is False or a.category() in activitylist)  # remove invalid activities (if provided)
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
         vo = vo.rescale(srcdim / 960.0)  # upscale tracks back to source resolution
         gc.enable()
-        
+
         return vo
+
+
+    def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False):
+        return (v.mindim(512)
+                .activityfilter(lambda a: a.confidence() >= float(minconf))
+                .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
+                          timestamp=True,
+                          fontsize=6,
+                          outfile=outfile))  # colored boxes by track id, activity captions with confidence, 5Hz, 512x(-1) resolution    
     
