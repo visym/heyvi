@@ -11,6 +11,18 @@ import heyvi.label
 import contextlib
 
 
+# 29AUG21:
+# -modify vipy.video.Stream to buffer a configurable amount of video
+# -video is stored round robin from a frame pointer and frame offset
+# -the first iterator will read from RTSP stream
+# -subsequent iterators will read from buffer stored in self._video
+# -self._video.attributes stores the pointers
+# -after streams are done, clean up buffer
+# -YoutubeLive constructor takes as arguments how we will set up visualization (videoonly, nounonly)
+# -then calling the youtubelive takes in video, system iterator
+# -system should have a finalize method that will operate on a time interval (insteead of only at the end)
+
+
 class YoutubeLive():
     """Youtube Live stream"""
     
