@@ -4,8 +4,6 @@ import gc
 import torch
 import heyvi.recognition
 import heyvi.detection
-import pycollector.version
-import pycollector.label
 import heyvi.version
 import heyvi.label
 import contextlib
