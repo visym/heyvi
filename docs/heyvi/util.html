@@ -4,8 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
 <meta name="generator" content="pdoc 0.10.0" />
-<title>heyvi API documentation</title>
-<meta name="description" content="Hey Vi …" />
+<title>heyvi.util API documentation</title>
+<meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/typography.min.css" integrity="sha256-7l/o7C8jubJiy74VsKTidCy1yBkRtiUGbVkYBylBqUg=" crossorigin>
 <link rel="stylesheet preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.1.1/styles/github.min.css" crossorigin>
@@ -19,89 +19,51 @@
 <main>
 <article id="content">
 <header>
-<h1 class="title">Package <code>heyvi</code></h1>
+<h1 class="title">Module <code>heyvi.util</code></h1>
 </header>
 <section id="section-intro">
-<p>Hey Vi </p>
-<h2 id="versioning">Versioning</h2>
-<p>To determine what heyvi version you are running you can use:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; heyvi.__version__
-&gt;&gt;&gt; heyvi.version.is_at_least('1.11.1') 
-</code></pre>
-<h1 id="contact">Contact</h1>
-<p>Visym Labs <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;">&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/09412fd9339eb3fab1264832e38ad1133aa86696/heyvi/__init__.py#L1-L26" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/09412fd9339eb3fab1264832e38ad1133aa86696/heyvi/util.py#L1-L13" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">&#34;&#34;&#34;
-Hey Vi 
+<pre><code class="python">from datetime import datetime, timezone
 
-## Versioning
-
-To determine what heyvi version you are running you can use:
-
-&gt;&gt;&gt; heyvi.__version__
-&gt;&gt;&gt; heyvi.version.is_at_least(&#39;1.11.1&#39;) 
-
-# Contact
-
-Visym Labs &lt;info@visym.com&gt;
-
-&#34;&#34;&#34;
-
-# Import all subpackages
-import heyvi.version
-import heyvi.system
-import heyvi.recognition
-import heyvi.detection
-import heyvi.sensor
+try:
+    from zoneinfo import ZoneInfo  # python &gt;=3.9
+    tz = ZoneInfo(&#39;US/Eastern&#39;)
+except:
+    tz = timezone.utc
 
 
-__version__ = heyvi.version.VERSION</code></pre>
+def timestamp():
+    &#34;&#34;&#34;Datetime stamp in eastern timezone with microsecond resolution&#34;&#34;&#34;
+    return datetime.now(tz).strftime(&#34;%Y-%m-%dT%H:%M:%S.%f%z&#34;)</code></pre>
 </details>
 </section>
 <section>
-<h2 class="section-title" id="header-submodules">Sub-modules</h2>
+</section>
+<section>
+</section>
+<section>
+<h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt><code class="name"><a title="heyvi.detection" href="detection.html">heyvi.detection</a></code></dt>
+<dt id="heyvi.util.timestamp"><code class="name flex">
+<span>def <span class="ident">timestamp</span></span>(<span>)</span>
+</code></dt>
 <dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.label" href="label.html">heyvi.label</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.model" href="model/index.html">heyvi.model</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.recognition" href="recognition.html">heyvi.recognition</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.sensor" href="sensor.html">heyvi.sensor</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.system" href="system.html">heyvi.system</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.util" href="util.html">heyvi.util</a></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt><code class="name"><a title="heyvi.version" href="version.html">heyvi.version</a></code></dt>
-<dd>
-<div class="desc"></div>
+<div class="desc"><p>Datetime stamp in eastern timezone with microsecond resolution</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/09412fd9339eb3fab1264832e38ad1133aa86696/heyvi/util.py#L10-L12" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def timestamp():
+    &#34;&#34;&#34;Datetime stamp in eastern timezone with microsecond resolution&#34;&#34;&#34;
+    return datetime.now(tz).strftime(&#34;%Y-%m-%dT%H:%M:%S.%f%z&#34;)</code></pre>
+</details>
 </dd>
 </dl>
-</section>
-<section>
-</section>
-<section>
 </section>
 <section>
 </section>
@@ -160,22 +122,17 @@ setTimeout(() => input.focus(), 100);
 </script>
 <h1>Index</h1>
 <div class="toc">
-<ul>
-<li><a href="#versioning">Versioning</a></li>
-<li><a href="#contact">Contact</a></li>
-</ul>
+<ul></ul>
 </div>
 <ul id="index">
-<li><h3><a href="#header-submodules">Sub-modules</a></h3>
+<li><h3>Super-module</h3>
 <ul>
-<li><code><a title="heyvi.detection" href="detection.html">heyvi.detection</a></code></li>
-<li><code><a title="heyvi.label" href="label.html">heyvi.label</a></code></li>
-<li><code><a title="heyvi.model" href="model/index.html">heyvi.model</a></code></li>
-<li><code><a title="heyvi.recognition" href="recognition.html">heyvi.recognition</a></code></li>
-<li><code><a title="heyvi.sensor" href="sensor.html">heyvi.sensor</a></code></li>
-<li><code><a title="heyvi.system" href="system.html">heyvi.system</a></code></li>
-<li><code><a title="heyvi.util" href="util.html">heyvi.util</a></code></li>
-<li><code><a title="heyvi.version" href="version.html">heyvi.version</a></code></li>
+<li><code><a title="heyvi" href="index.html">heyvi</a></code></li>
+</ul>
+</li>
+<li><h3><a href="#header-functions">Functions</a></h3>
+<ul class="">
+<li><code><a title="heyvi.util.timestamp" href="#heyvi.util.timestamp">timestamp</a></code></li>
 </ul>
 </li>
 </ul>
