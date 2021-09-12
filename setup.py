@@ -62,8 +62,11 @@ setup(
         "torch","torchvision",
         "pyyaml",  # legacy for models
         "pytorch_lightning",  # training
-        "ujson",  # much faster 
+        "ujson",  # much faster
     ],
+    extras_require={
+        'all': ['pdoc3']
+        },    
     keywords=['computer vision machine learning ML CV privacy video image'],    
     classifiers=[
         "Programming Language :: Python :: 3",
