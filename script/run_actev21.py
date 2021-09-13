@@ -1,24 +1,69 @@
 import os
-from argparse import ArgumentParser
 import gc
-
 import vipy 
 import torch
-import heyvi.recognition
-import heyvi.detection
+import heyvi
 import pycollector.version
 import pycollector.label
-import heyvi.version
+import argparse 
 
 assert vipy.version.is_exactly('1.11.5')
 assert pycollector.version.is_exactly('0.2.8')
-assert heyvi.version.is_exactly('0.0.4')
+assert heyvi.version.is_exactly('0.0.5')
+
+
+    
+def _tensorset():
+    """Export training set to data augmented tensors for fast training"""
+    
+    raise ValueError('FIXME: update hardcoded paths')
+    
+    D_trainset = vipy.util.load('./pip_370k_training/trainset.pkl')
+    D_trainset = D_trainset.filter(lambda v: 'mevadata-public-01' not in v.filename() or all(['DIVA-phase-2/MEVA/contrib/' not in a.attributes['act_yaml'] for a in v.activitylist()]))  # non-contrib MEVA videos only                                                                                                                 
+    net = heyvi.recognition.PIP_370k(mlfl=True)
+    assert set(net.classlist()) == set(D_trainset.classlist())
+
+    shutil.rmtree('./pip_370k_training/trainset')
+    vipy.util.remkdir('./pip_370k_training/trainset')
+
+    f_video_to_labeled_tensor = net.totensor(training=True)  # create (tensor, label) pairs with data augmentation                                                                                                                                                                                                                      
+    with vipy.globals.parallel(scheduler='ma01-5200-0045:8785'):
+        D_trainset.to_torch_tensordir(f_video_to_labeled_tensor, './pip_370k_training/trainset', n_augmentations=15, n_chunks=2048)
+    
+
+def _train(batchsize_per_gpu=32, num_workers_per_gpu=4, outdir='./pip_370k_training/', resume_from_checkpoint=None, valmeva=True, trainmeva=False, trainpip=False):    
+    raise ValueError('FIXME: update hardcoded paths')    
+
+    valset = pycollector.dataset.Dataset('./pip_370k_training/valset.pkl')
+    valset = valset if not valmeva else valset.filter(lambda v: 'mevadata-public-01' in v.filename() and not any(['DIVA-phase-2/MEVA/contrib/' in a.attributes['act_yaml'] for a in v.activitylist()]))  # non-contrib MEVA videos only                                                                                                 
+    net = heyvi.recognition.PIP_370k(mlfl=True)
+    trainloader = vipy.torch.TorchTensordir('./pip_370k_training/trainset', verbose=False)
+    if trainmeva:
+        D = meva_label_conversion(vipy.dataset.Dataset('./pip_370k_training/trainset.pkl')).filter(lambda v: 'mevadata-public-01' in v.filename() or v.category() in ['person_walks', 'car_moves', 'car', 'person'])
+        iid = set([v.instanceid() for v in D])
+        trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
+        W = D.multilabel_inverse_frequency_weight()
+        net._class_to_weight = {k:W[k] if k in W else 0 for k in net.classlist()}
+    elif trainpip:
+        D = pip_label_conversion(vipy.dataset.Dataset('./pip_370k_training/trainset.pkl')).filter(lambda v: 'mevadata-public-01' not in v.filename())
+        iid = set([v.instanceid() for v in D])
+        trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
+        W = D.multilabel_inverse_frequency_weight()
+        net._class_to_weight = {k:W[k] if k in W else 0 for k in net.classlist()}
+
+    valloader = valset.to_torch(net.totensor(validation=True))
+    trainloader = torch.utils.data.DataLoader(trainloader, num_workers=num_workers_per_gpu, batch_size=batchsize_per_gpu, pin_memory=True, shuffle=True)
+    valloader = torch.utils.data.DataLoader(valloader, num_workers=num_workers_per_gpu, batch_size=batchsize_per_gpu, pin_memory=True)
+    checkpoint_callback = ModelCheckpoint(save_top_k=10, monitor='avg_val_loss', verbose=True, mode='min')
+
+    from pytorch_lightning.plugins import DDPPlugin
+    t = pl.Trainer(gpus=[0,1,2,3,4,5,6,7], accelerator='ddp', default_root_dir=outdir, resume_from_checkpoint=resume_from_checkpoint, plugins=DDPPlugin(find_unused_parameters=False), callbacks=[checkpoint_callback])
+    t.fit(net, trainloader, valloader)
+
 
 
 def process_video(videofilelist, activitylist, frameratelist, cliplist, strict=False, outvideo=False, do_spatial_localization=False, dt_spatial_localization=10):
 
-        
-    
     modeldir = vipy.util.filepath(os.path.abspath(__file__))
     trackmodel = os.path.join(modeldir, 'yolov5x.weights')
     activitymodel = os.path.join(modeldir, 'mlfl_v5_epoch_41-step_59279.ckpt')
@@ -90,7 +135,7 @@ def process_video(videofilelist, activitylist, frameratelist, cliplist, strict=F
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser()
+    parser = argparse.ArgumentParser()
     parser.add_argument("--outfile", help="Output visualization video file")
     parser.add_argument("--infile", help="Input video file", required=True)
     parser.add_argument("--framerate", help="Input video framerate", type=float, default=30.0)    

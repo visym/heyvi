@@ -1,28 +1,28 @@
 import os
 import vipy
 from vipy.util import remkdir
-import pycollector.detection
-import pytest 
+import heyvi
 
-@pytest.mark.skip(reason="Skip testing for now")
+
 def test_face():
-    im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg')
-    d = pycollector.detection.FaceDetector()
+    im = vipy.image.Image(url='https://upload.wikimedia.org/wikipedia/en/d/d6/Friends_season_one_cast.jpg').mindim(256)
+    d = heyvi.detection.FaceDetector()
     ims = d(im)
     assert len(ims.objects()) == 6
     print('[test_detection]: face detector passed')
 
     
-@pytest.mark.skip(reason="Skip testing for now")
 def test_object():
-    im = vipy.image.vehicles()
-    d = pycollector.detection.ObjectDetector()
+    im = vipy.image.vehicles().mindim(256)
+    d = heyvi.detection.ObjectDetector()
     ims = d(im)
-    assert len(ims.objects()) == 50
+    assert len(ims.objects()) == 273
     print('[test_detection]: object detector passed')
     
-    
+
 def _test_actor_association():
+    raise ValueError('FIXME: legacy test case")
+
     from pycollector.admin.video import Video  # admin only
     from pycollector.admin.globals import backend
 

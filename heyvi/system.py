@@ -9,28 +9,20 @@ import heyvi.label
 import contextlib
 
 
-# 29AUG21:
-# -modify vipy.video.Stream to buffer a configurable amount of video
-# -video is stored round robin from a frame pointer and frame offset
-# -the first iterator will read from RTSP stream
-# -subsequent iterators will read from buffer stored in self._video
-# -self._video.attributes stores the pointers
-# -after streams are done, clean up buffer
-# -YoutubeLive constructor takes as arguments how we will set up visualization (videoonly, nounonly)
-# -then calling the youtubelive takes in video, system iterator
-# -system should have a finalize method that will operate on a time interval (insteead of only at the end)
-
 
 class YoutubeLive():
     """Youtube Live stream"""
     
-    def __init__(self, streamkey, url='rtmp://a.rtmp.youtube.com/live2', fps=30):
+    def __init__(self, streamkey=None, url='rtmp://a.rtmp.youtube.com/live2', fps=30):
+        assert streamkey is not None or 'VIPY_YOUTUBE_STREAMKEY' in os.environ
+        streamkey = streamkey if streamkey is not None else os.environ['VIPY_YOUTUBE_STREAMKEY']
+        
         self._url = '%s/%s' % (url, streamkey)
         assert vipy.util.isurl(self._url)
         self._vo = vipy.video.Scene(url=self._url, framerate=fps)
 
     def __repr__(self):
-        return '<heyvi.system.YoutubeLive: %s>' % str(self._vo)
+        return '<heyvi.system.YoutubeLive: url=%s, framerate=%2.1f>' % (str(self._vo.url()), self._vo.framerate())
     
     def __call__(self, vi):
         assert isinstance(vi, vipy.video.Scene)
@@ -40,7 +32,9 @@ class YoutubeLive():
                 print(k,im)
                 s.write(im)
 
-                
+        return self
+
+    
 class Recorder():
     """Record a livestream to an output video file
     
@@ -77,7 +71,7 @@ class Actev21():
     def __init__(self):
 
         assert vipy.version.is_exactly('1.11.7')
-        assert heyvi.version.is_exactly('0.0.3')
+        assert heyvi.version.is_exactly('0.0.5')
         assert torch.cuda.device_count() >= 4
         
         self._activitymodel = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/ntvjg352b0fwnah/mlfl_v5_epoch_41-step_59279.ckpt',
