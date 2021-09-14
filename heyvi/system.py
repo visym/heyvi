@@ -7,31 +7,38 @@ import heyvi.detection
 import heyvi.version
 import heyvi.label
 import contextlib
-
+import itertools
 
 
 class YoutubeLive():
     """Youtube Live stream"""
     
-    def __init__(self, streamkey=None, url='rtmp://a.rtmp.youtube.com/live2', fps=30):
+    def __init__(self, streamkey=None, url='rtmp://a.rtmp.youtube.com/live2', fps=30, encoder='480p'):
         assert streamkey is not None or 'VIPY_YOUTUBE_STREAMKEY' in os.environ
         streamkey = streamkey if streamkey is not None else os.environ['VIPY_YOUTUBE_STREAMKEY']
         
+        # https://support.google.com/youtube/answer/2853702?hl=en#zippy=%2Cp
+        self._encoder_recommended = {'720p':{'width':1280, 'height':720, 'bitrate': '4000k'},
+                                     '480p':{'width':854, 'height':480, 'bitrate': '1000k'},
+                                     '360p':{'width':640, 'height':360, 'bitrate': '1000k'}}
+        assert encoder in self._encoder_recommended
+        self._encoder = self._encoder_recommended[encoder]
+
         self._url = '%s/%s' % (url, streamkey)
         assert vipy.util.isurl(self._url)
         self._vo = vipy.video.Scene(url=self._url, framerate=fps)
-
+        
     def __repr__(self):
         return '<heyvi.system.YoutubeLive: url=%s, framerate=%2.1f>' % (str(self._vo.url()), self._vo.framerate())
     
     def __call__(self, vi):
         assert isinstance(vi, vipy.video.Scene)
-        
-        with self._vo.stream(write=True) as s:
-            for (k,im) in enumerate(vi.stream()):
+
+        (h,w,fps) = (self._encoder['height'], self._encoder['width'], self._vo.framerate())
+        with self._vo.stream(write=True, bitrate=self._encoder['bitrate']) as s:
+            for (k,im) in enumerate(vi.framerate(fps).resize(rows=h, cols=w)):
                 print(k,im)
                 s.write(im)
-
         return self
 
     
@@ -70,8 +77,8 @@ class Recorder():
 class Actev21():
     def __init__(self):
 
-        assert vipy.version.is_exactly('1.11.7')
-        assert heyvi.version.is_exactly('0.0.5')
+        assert vipy.version.is_at_least('1.11.10')
+        assert heyvi.version.is_at_least('0.0.5')
         assert torch.cuda.device_count() >= 4
         
         self._activitymodel = vipy.downloader.downloadif('https://dl.dropboxusercontent.com/s/ntvjg352b0fwnah/mlfl_v5_epoch_41-step_59279.ckpt',
@@ -83,7 +90,7 @@ class Actev21():
     def __call__(self, vi, vs=None, minconf=0.04):
 
         assert isinstance(vi, vipy.video.Scene)
-        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), "Use the Recorder() or buffer an RTSP stream before processing"
+        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), "Use the Recorder() or buffer an RTSP stream before processing"
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
@@ -96,10 +103,9 @@ class Actev21():
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
         with vs as s:
-            for (f, (vi,im)) in enumerate(zip(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1),  # activity detection 
-                                              vi.stream().frame(n=-detect.temporal_support()) if s is not None else itertools.repeat(None))):  # streaming visualization (n=delay)
-                if s is not None:
-                    s.write(self._annotator(im).rgb())
+            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
+                #if s is not None:
+                #    s.write(self._annotator(im).rgb())
                 print('%s, frame=%d' % (str(vi), f))                    
                 
         vi.activityfilter(lambda a: a.category() not in ['person', 'person_walks', 'vehicle', 'car_moves'])   # remove background activities
