@@ -371,21 +371,24 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         self._detbatchsize = detbatchsize if detbatchsize is not None else self.batchsize()
         self._gate = gate
 
-    def _track(self, vi, stride=1):
+    def _track(self, vi, stride=1, continuous=False):
         """Yield vipy.video.Scene(), an incremental tracked result for each frame.
         """
         assert isinstance(vi, vipy.video.Video), "Invalid input"
 
         (det, n) = (super().__call__, self._mindim)
-        for (k, vb) in enumerate(vi.stream().batch(self._detbatchsize)):
-            framelist = vb.framelist()
-            for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
-                for i in range(j, j+stride):                    
-                    if i < len(framelist):
-                        yield (vi.assign(k*self._detbatchsize+i, im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
-
-    def __call__(self, vi, stride=1):
-        return self._track(vi, stride)
+        for (k, vb) in enumerate(vi.stream().batch(self._detbatchsize, continuous=continuous)):
+            if vb is not None:
+                framelist = vb.framelist()
+                for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
+                    for i in range(j, j+stride):                    
+                        if i < len(framelist):
+                            yield (vi.assign(k*self._detbatchsize+i, im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
+            elif continuous:
+                yield None
+                            
+    def __call__(self, vi, stride=1, continuous=False):
+        return self._track(vi, stride, continuous)
     
     def stream(self, vi):
         return self._track(vi)
