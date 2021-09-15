@@ -91,6 +91,7 @@ class Recorder():
         assert isinstance(vi, vipy.video.Scene)
 
         vi = vi if seconds is None else vi.clone().duration(seconds=seconds)
+        vi = vi.framerate(self._vo.framerate())
         with self._vo.stream(overwrite=True) as s:
             for (k,im) in enumerate(vi.stream()):
                 if verbose:
@@ -111,15 +112,11 @@ class Tracker():
     def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream().delay(-30), self._tracker(vi, stride=3, continuous=True))):
-            print(k)
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
             if callable(frame_callback) and im is not None:
                 frame_callback(im, v)  # FIXME: who owns the annotation
             if verbose and v is not None:
-                #print('[heyvi.system.Tracker][%s][%d]: %s' % (timestamp(), k, str(v)+' '*100), end='\r')
-                pass
-            print((str(im), v))       # FIXME: should include annotations
-            
+                print('[heyvi.system.Tracker][%s][%d]: %s' % (timestamp(), k, str(v)+' '*100), end='\r')
         return vi
     
 

@@ -376,16 +376,13 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         """
         assert isinstance(vi, vipy.video.Video), "Invalid input"
 
-        (det, n) = (super().__call__, self._mindim)
-        for (k, vb) in enumerate(vi.stream().batch(self._detbatchsize, continuous=continuous)):
-            if vb is not None:
-                framelist = vb.framelist()
-                for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
-                    for i in range(j, j+stride):                    
-                        if i < len(framelist):
-                            yield (vi.assign(k*self._detbatchsize+i, im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
-            elif continuous:
-                yield None
+        (det, n, k) = (super().__call__, self._mindim, 0)
+        for (k,vb) in enumerate(vi.stream(buffered=True).batch(self._detbatchsize)):
+            framelist = vb.framelist()
+            for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
+                for i in range(j, j+stride):                    
+                    if i < len(framelist):
+                        yield (vi.assign(frame=k*self._detbatchsize+i, dets=im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
                             
     def __call__(self, vi, stride=1, continuous=False):
         return self._track(vi, stride, continuous)
