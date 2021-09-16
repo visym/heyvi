@@ -125,7 +125,7 @@ class Tracker():
 
     """
     def __init__(self):
-        assert vipy.version.is_at_least('1.11.10')
+        assert vipy.version.is_at_least('1.11.11')
         assert heyvi.version.is_at_least('0.0.5')        
         assert torch.cuda.device_count() >= 4
 
@@ -135,7 +135,7 @@ class Tracker():
     def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
                 frame_callback(im, v)  
             if verbose and v is not None:
@@ -145,9 +145,20 @@ class Tracker():
 
             
 class Actev21():
+    """heyvi.system.Actev21 class
+
+    Real time activity detection for the 37 MEVA (https://mevadata.org) activity classes
+
+    >>> v = heyvi.sensor.rtsp().framerate(5)
+    >>> S = heyvi.system.Actev21()
+    >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+    >>>     S(v, frame_callback=lambda im, imraw, v: s(im), minconf=0.2)
+
+    """
+    
     def __init__(self):
 
-        assert vipy.version.is_at_least('1.11.10')
+        assert vipy.version.is_at_least('1.11.11')
         assert heyvi.version.is_at_least('0.0.5')
         assert torch.cuda.device_count() >= 4
         
@@ -155,7 +166,7 @@ class Actev21():
                                                          vipy.util.tocache('mlfl_v5_epoch_41-step_59279.ckpt'),  # set VIPY_CACHE env 
                                                          sha1='c4457e5b2e4fa1462d552070c47cac9eb2833e47')
 
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate().rgb()
+        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
         
     def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None):
 
@@ -171,9 +182,9 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
-        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection
+        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3, buffered=vi.islive()), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive()))):  # activity detection
             if callable(frame_callback) and im is not None:
-                frame_callback(self._annotator(im), vi)  
+                frame_callback(self._annotator(im.clone()), im, vi)  
             if verbose:
                 print('[heyvi.system.Actev21][%s][%d]: %s' % (timestamp(), f, vi), end='\r')                                    
                 

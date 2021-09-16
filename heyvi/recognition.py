@@ -447,7 +447,7 @@ class ActivityTracker(PIP_370k):
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] >= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
 
-    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True):
+    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True, buffered=True):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -> tensor CxNxHxW
@@ -465,12 +465,7 @@ class ActivityTracker(PIP_370k):
                 vi = itertools.chain([vp], vi)  # unpeek
                 sw = vipy.util.Stopwatch() if throttle else None  # real-time framerate estimate
                 framerate = vp.framerate()
-                for (k, (vo,vc)) in enumerate(zip(vi, vp.stream().clip(n, m, continuous=True, activities=False, delay=dt))):
-                    
-                    #if k > 10:
-                    #    import ipdb; ipdb.set_trace()  # TESTING
-
-                    
+                for (k, (vo,vc)) in enumerate(zip(vi, vp.stream(buffered=buffered).clip(n, m, continuous=True, activities=False, delay=dt))):
                     videotracks = [] if vc is None else [vt for vt in vc.trackfilter(lambda t: len(t)>=4 and (t.category() == 'person' or (t.category() == 'vehicle' and vo.track(t.id()).ismoving(k-10*n+dt, k+dt)))).tracksplit()]  # vehicle moved recently?
                     if throttle:
                         videotracks.sort(key=lambda v: v.actor().confidence(last=1))  # in-place                                            

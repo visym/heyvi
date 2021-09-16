@@ -371,13 +371,13 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         self._detbatchsize = detbatchsize if detbatchsize is not None else self.batchsize()
         self._gate = gate
 
-    def _track(self, vi, stride=1, continuous=False):
+    def _track(self, vi, stride=1, continuous=False, buffered=True):
         """Yield vipy.video.Scene(), an incremental tracked result for each frame.
         """
         assert isinstance(vi, vipy.video.Video), "Invalid input"
 
         (det, n, k) = (super().__call__, self._mindim, 0)
-        for (k,vb) in enumerate(vi.stream(buffered=True).batch(self._detbatchsize)):
+        for (k,vb) in enumerate(vi.stream(buffered=buffered).batch(self._detbatchsize)):
             framelist = vb.framelist()
             for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
                 for i in range(j, j+stride):                    
