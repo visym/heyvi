@@ -466,6 +466,11 @@ class ActivityTracker(PIP_370k):
                 sw = vipy.util.Stopwatch() if throttle else None  # real-time framerate estimate
                 framerate = vp.framerate()
                 for (k, (vo,vc)) in enumerate(zip(vi, vp.stream().clip(n, m, continuous=True, activities=False, delay=dt))):
+                    
+                    #if k > 10:
+                    #    import ipdb; ipdb.set_trace()  # TESTING
+
+                    
                     videotracks = [] if vc is None else [vt for vt in vc.trackfilter(lambda t: len(t)>=4 and (t.category() == 'person' or (t.category() == 'vehicle' and vo.track(t.id()).ismoving(k-10*n+dt, k+dt)))).tracksplit()]  # vehicle moved recently?
                     if throttle:
                         videotracks.sort(key=lambda v: v.actor().confidence(last=1))  # in-place                                            

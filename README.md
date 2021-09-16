@@ -10,7 +10,7 @@ HEYVI is a python package for visual AI that provides systems and trained models
 
 HEYVI provides:  
 
-* Real time activity Detection of the [MEVA activity classes](https://mevadata.org)
+* Real time activity detection of the [MEVA activity classes](https://mevadata.org)
 * Real time visual object tracking in long duration videos
 * Live streaming of annotated videos to youtube live
 * Visual AI from RTSP cameras

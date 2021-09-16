@@ -78,12 +78,27 @@ class Recorder():
     >>> v = v.duration(seconds=3).load().saveas('/tmp/out.mp4')
 
     This will record three seconds from the provided RTSP stream and save in the usual way to the output file
-    
+
+    To record frame by frame:
+
+    >>> v = vipy.video.RandomScene()
+    >>> with Recorder('out.mp4') as r:
+    >>>    for im in v:
+    >>>        r(im.annotate().rgb())  # write individual frames from video v
+
     """
-    def __init__(self, outfile, fps=30):
+    def __init__(self, outfile, fps=30, overwrite=False):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-                
+        self._overwrite = overwrite
+        
+    def __enter__(self):
+        self._vs = self._vo.stream(write=True, overwrite=self._overwrite)
+        return lambda im, v=None: self._vs.write(im)  
+
+    def __exit__(self, type, value, tb):
+        self._vs.__exit__(type, value, tb)
+        
     def __repr__(self):
         return '<heyvi.system.Recorder: %s>' % str(self._vo)
     
@@ -140,12 +155,11 @@ class Actev21():
                                                          vipy.util.tocache('mlfl_v5_epoch_41-step_59279.ckpt'),  # set VIPY_CACHE env 
                                                          sha1='c4457e5b2e4fa1462d552070c47cac9eb2833e47')
 
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
+        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate().rgb()
         
-    def __call__(self, vi, vs=None, minconf=0.04, verbose=True):
+    def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None):
 
         assert isinstance(vi, vipy.video.Scene)
-        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), "Use the Recorder() or buffer an RTSP stream before processing"
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
@@ -157,12 +171,11 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
-        with vs as s:
-            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
-                #if s is not None:
-                #    s.write(self._annotator(im).rgb())
-                if verbose:
-                    print('[heyvi.system.Tracker][%s][%d]: %s' % (timestamp(), f, vi), end='\r')                                    
+        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection
+            if callable(frame_callback) and im is not None:
+                frame_callback(self._annotator(im), vi)  
+            if verbose:
+                print('[heyvi.system.Actev21][%s][%d]: %s' % (timestamp(), f, vi), end='\r')                                    
                 
         vi.activityfilter(lambda a: a.category() not in ['person', 'person_walks', 'vehicle', 'car_moves'])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
