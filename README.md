@@ -43,7 +43,7 @@ with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
 Create a default RTSP camera and GPU enabled object tracker, then stream the annotated video (e.g. bounding boxes with captions) to a YouTube live stream.
 
 
-[![YoutubeLive stream](https://img.youtube.com/vi/yRa76mIz0tU/hqdefault.jpg)](https://youtu.be/yRa76mIz0tU)
+[![YoutubeLive stream](https://img.youtube.com/vi/yRa76mIz0tU/maxresdefault.jpg)](https://youtu.be/yRa76mIz0tU)
 
 
 
