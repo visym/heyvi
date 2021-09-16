@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L1-L603" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L1-L603" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -648,7 +648,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L30-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L30-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityRecognition(object):
     def __init__(self, pretrained=True):
@@ -721,7 +721,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L60-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L60-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activity(self, video, threshold=None):
     (c,s) = zip(*self.label_confidence(video=video, threshold=None))
@@ -736,7 +736,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L80-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L80-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def binary_vector(self, categories):
     y = np.zeros(len(self.classlist())).astype(np.float32)
@@ -753,7 +753,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L36-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L36-L37" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def class_to_index(self, c=None):
     return self._class_to_index if c is None else self._class_to_index[c]</code></pre>
@@ -767,7 +767,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order</code></pre>
@@ -781,7 +781,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L49-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L49-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromindex(self, k):
     index_to_class = {v:k for (k,v) in self.class_to_index().items()}
@@ -797,7 +797,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L39-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L39-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def index_to_class(self, index=None):
     d = {v:k for (k,v) in self.class_to_index().items()}
@@ -812,7 +812,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L54-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L54-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_confidence(self, video=None, tensor=None, threshold=None):
     raise
@@ -829,7 +829,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L46-L47" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L46-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_classes(self):
     return len(self.classlist())</code></pre>
@@ -843,7 +843,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L74-L75" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L74-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_support(self):
     return self._num_frames</code></pre>
@@ -857,7 +857,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L64-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def top1(self, video=None, tensor=None, threshold=None):
     raise
@@ -872,7 +872,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L68-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L68-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, k, video=None, tensor=None, threshold=None):
     raise
@@ -889,7 +889,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L77-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L77-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, training=False):
     raise</code></pre>
@@ -906,7 +906,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L395-L601" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L395-L601" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityTracker(PIP_370k): 
     def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
@@ -1154,7 +1154,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L421-L435" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L421-L435" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     &#34;&#34;&#34;Overload forward for multi-gpu batch.  Don&#39;t use torch DataParallel!&#34;&#34;&#34;
@@ -1181,7 +1181,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L437-L447" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L437-L447" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def lrt(self, x_logits, lrt_threshold):
     &#34;&#34;&#34;top-k with likelihood ratio test with background null hypothesis&#34;&#34;&#34;
@@ -1204,7 +1204,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L414-L419" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L414-L419" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_stride(self, s=None):
     if s is not None:
@@ -1238,7 +1238,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L88-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L88-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_250k(pl.LightningModule, ActivityRecognition):
     &#34;&#34;&#34;Activity recognition using people in public - 250k stabilized&#34;&#34;&#34;
@@ -1475,7 +1475,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L200-L202" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L200-L202" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_checkpoint(cls, checkpointpath):
@@ -1493,7 +1493,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L123-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L123-L125" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -1508,7 +1508,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L127-L129" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L127-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category_confidence(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -1673,7 +1673,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L146-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L146-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def configure_optimizers(self):
     optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
@@ -1697,7 +1697,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L143-L144" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L143-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.net(x)  # lighting handles device</code></pre>
@@ -1711,7 +1711,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L131-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L131-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -1727,7 +1727,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L136-L140" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L136-L140" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk_probability(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -1744,7 +1744,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L277-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L277-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, v=None, training=False, validation=False, show=False, doflip=False):
     &#34;&#34;&#34;Return captured lambda function if v=None, else return tensor&#34;&#34;&#34;    
@@ -1817,7 +1817,7 @@ so it differs from the actual loss returned in train/validation step.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L150-L186" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L150-L186" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def training_step(self, batch, batch_nb, logging=True, valstep=False):
     (x,Y) = batch  
@@ -1901,7 +1901,7 @@ each validation step for that dataloader.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L193-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L193-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_epoch_end(self, outputs):
     avg_loss = torch.stack([x[&#39;val_loss&#39;] for x in outputs]).mean()
@@ -1997,7 +1997,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L188-L191" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L188-L191" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_step(self, batch, batch_nb):
     loss = self.training_step(batch, batch_nb, logging=False, valstep=True)[&#39;loss&#39;]
@@ -2016,7 +2016,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L286-L392" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L286-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
@@ -2166,7 +2166,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/recognition.py#L317-L321" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/2c826e4ec0beb47e8e3960d044d449b16ca16f82/heyvi/recognition.py#L317-L321" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x, k=None):
     &#34;&#34;&#34;Return the top-k classes for a 3 second activity proposal along with framewise ground truth&#34;&#34;&#34;        
