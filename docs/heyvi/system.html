@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/system.py#L1-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L1-L181" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
@@ -36,77 +36,133 @@ import heyvi.detection
 import heyvi.version
 import heyvi.label
 import contextlib
-
-
-# 29AUG21:
-# -modify vipy.video.Stream to buffer a configurable amount of video
-# -video is stored round robin from a frame pointer and frame offset
-# -the first iterator will read from RTSP stream
-# -subsequent iterators will read from buffer stored in self._video
-# -self._video.attributes stores the pointers
-# -after streams are done, clean up buffer
-# -YoutubeLive constructor takes as arguments how we will set up visualization (videoonly, nounonly)
-# -then calling the youtubelive takes in video, system iterator
-# -system should have a finalize method that will operate on a time interval (insteead of only at the end)
+import itertools
+from heyvi.util import timestamp
 
 
 class YoutubeLive():
-    &#34;&#34;&#34;Youtube Live stream&#34;&#34;&#34;
+    &#34;&#34;&#34;Youtube Live stream.
+
+    &gt;&gt;&gt; Y = heyvi.system.YoutubeLive(encoder=&#39;480p&#39;)
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()                                                                                                                                                                                                                  
+    &gt;&gt;&gt; Y(v)
+
+    Args:
+        encoder [str][&#39;480p, &#39;720p&#39;, &#39;360p&#39;]:  The encoder settings for the youtube live stream
+        fps [float]:  The framerate in frames per second of the output stream.  
+        streamkey [str]:  The youtube live key (https://support.google.com/youtube/answer/9854503?hl=en), or set as envronment variable VIPY_YOUTUBE_STREAMKEY
+
+    &#34;&#34;&#34;
     
-    def __init__(self, streamkey, url=&#39;rtmp://a.rtmp.youtube.com/live2&#39;, fps=30):
+    def __init__(self, streamkey=None, url=&#39;rtmp://a.rtmp.youtube.com/live2&#39;, fps=30, encoder=&#39;480p&#39;):
+        assert streamkey is not None or &#39;VIPY_YOUTUBE_STREAMKEY&#39; in os.environ
+        streamkey = streamkey if streamkey is not None else os.environ[&#39;VIPY_YOUTUBE_STREAMKEY&#39;]
+        
+        # https://support.google.com/youtube/answer/2853702?hl=en#zippy=%2Cp
+        self._encoder_recommended = {&#39;720p&#39;:{&#39;width&#39;:1280, &#39;height&#39;:720, &#39;bitrate&#39;: &#39;4000k&#39;},
+                                     &#39;480p&#39;:{&#39;width&#39;:854, &#39;height&#39;:480, &#39;bitrate&#39;: &#39;1000k&#39;},
+                                     &#39;360p&#39;:{&#39;width&#39;:640, &#39;height&#39;:360, &#39;bitrate&#39;: &#39;1000k&#39;}}
+        
+        assert encoder in self._encoder_recommended
+        self._encoder = self._encoder_recommended[encoder]
+
         self._url = &#39;%s/%s&#39; % (url, streamkey)
         assert vipy.util.isurl(self._url)
         self._vo = vipy.video.Scene(url=self._url, framerate=fps)
-
-    def __repr__(self):
-        return &#39;&lt;heyvi.system.YoutubeLive: %s&gt;&#39; % str(self._vo)
-    
-    def __call__(self, vi):
-        assert isinstance(vi, vipy.video.Scene)
         
-        with self._vo.stream(write=True) as s:
-            for (k,im) in enumerate(vi.stream()):
-                print(k,im)
-                s.write(im)
+    def __repr__(self):
+        return &#39;&lt;heyvi.system.YoutubeLive: url=%s, framerate=%2.1f&gt;&#39; % (str(self._vo.url()), self._vo.framerate())
 
-                
+    def __enter__(self):
+        (h,w,br) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._encoder[&#39;bitrate&#39;])        
+        self._vs = self._vo.stream(write=True, bitrate=br)
+        return lambda im, v=None: self._vs.write(im if im.shape() == (h,w) else im.resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
+
+    def __exit__(self, type, value, tb):
+        self._vs.__exit__(type, value, tb)
+    
+    def __call__(self, vi, verbose=True):
+        assert isinstance(vi, vipy.video.Scene)
+
+        (h,w,fps) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._vo.framerate())
+        with self as s:
+            for (k,im) in enumerate(vi.framerate(fps).resize(height=h, width=w)):
+                if verbose:
+                    print(&#39;[heyvi.system.YoutubeLive][%s][%d]: %s&#39; % (timestamp(), k,im), end=&#39;\r&#39;)
+                s(im)  # write frame to live stream
+        return self
+
+    
 class Recorder():
     &#34;&#34;&#34;Record a livestream to an output video file
     
     This will record an out streaming to the provided outfile
 
+    &gt;&gt;&gt; v = vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30)
     &gt;&gt;&gt; R = Recorder(&#39;/tmp/out.mp4&#39;, framerate=5)
-    &gt;&gt;&gt; R(vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30), seconds=60*60)
+    &gt;&gt;&gt; R(v, seconds=60*60)
 
     To buffer to memory, you do not need this recorder, use (for small durations):
 
-    &gt;&gt;&gt; v = vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30).duration(seconds=3).load()
+    &gt;&gt;&gt; v = v.duration(seconds=3).load().saveas(&#39;/tmp/out.mp4&#39;)
 
-    This will record three seconds from the provided RTSP stream.
+    This will record three seconds from the provided RTSP stream and save in the usual way to the output file
+    
     &#34;&#34;&#34;
-    def __init__(self, outfile, fps=30, seconds=None):
+    def __init__(self, outfile, fps=30):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-        
+                
     def __repr__(self):
         return &#39;&lt;heyvi.system.Recorder: %s&gt;&#39; % str(self._vo)
     
-    def __call__(self, vi, seconds=None):
+    def __call__(self, vi, seconds=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        vi = vi if seconds is None else vi.clone().clip(0, self._vo.framerate()*seconds)
+        vi = vi if seconds is None else vi.clone().duration(seconds=seconds)
+        vi = vi.framerate(self._vo.framerate())
         with self._vo.stream(overwrite=True) as s:
             for (k,im) in enumerate(vi.stream()):
-                print(&#39;%s, frame=%d&#39; % (str(im), k))
+                if verbose:
+                    print(&#39;[heyvi.system.Recorder][%s][%d]: %s&#39; % (timestamp(), k, im), end=&#39;\r&#39;)                                    
                 s.write(im)                
         return self._vo
                 
-                
+
+class Tracker():
+    &#34;&#34;&#34;heyvi.system.Tracker class
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
+    &gt;&gt;&gt; T = heyvi.system.Tracker()
+    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+    &gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+
+    &#34;&#34;&#34;
+    def __init__(self):
+        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
+        assert torch.cuda.device_count() &gt;= 4
+
+        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles  
+        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)   # TESTING: overlapfrac=6-&gt;0
+        
+    def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
+        assert isinstance(vi, vipy.video.Scene)
+
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
+            if callable(frame_callback) and im is not None:
+                frame_callback(im, v)  
+            if verbose and v is not None:
+                print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
+        return vi
+    
+
+            
 class Actev21():
     def __init__(self):
 
-        assert vipy.version.is_exactly(&#39;1.11.7&#39;)
-        assert heyvi.version.is_exactly(&#39;0.0.3&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert heyvi.version.is_at_least(&#39;0.0.5&#39;)
         assert torch.cuda.device_count() &gt;= 4
         
         self._activitymodel = vipy.downloader.downloadif(&#39;https://dl.dropboxusercontent.com/s/ntvjg352b0fwnah/mlfl_v5_epoch_41-step_59279.ckpt&#39;,
@@ -115,10 +171,10 @@ class Actev21():
 
         self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
         
-    def __call__(self, vi, vs=None, minconf=0.04):
+    def __call__(self, vi, vs=None, minconf=0.04, verbose=True):
 
         assert isinstance(vi, vipy.video.Scene)
-        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
+        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
@@ -131,11 +187,11 @@ class Actev21():
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
         with vs as s:
-            for (f, (vi,im)) in enumerate(zip(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1),  # activity detection 
-                                              vi.stream().frame(n=-detect.temporal_support()) if s is not None else itertools.repeat(None))):  # streaming visualization (n=delay)
-                if s is not None:
-                    s.write(self._annotator(im).rgb())
-                print(&#39;%s, frame=%d&#39; % (str(vi), f))                    
+            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
+                #if s is not None:
+                #    s.write(self._annotator(im).rgb())
+                if verbose:
+                    print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
                 
         vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
@@ -171,13 +227,13 @@ class Actev21():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/system.py#L76-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L132-L180" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Actev21():
     def __init__(self):
 
-        assert vipy.version.is_exactly(&#39;1.11.7&#39;)
-        assert heyvi.version.is_exactly(&#39;0.0.3&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert heyvi.version.is_at_least(&#39;0.0.5&#39;)
         assert torch.cuda.device_count() &gt;= 4
         
         self._activitymodel = vipy.downloader.downloadif(&#39;https://dl.dropboxusercontent.com/s/ntvjg352b0fwnah/mlfl_v5_epoch_41-step_59279.ckpt&#39;,
@@ -186,10 +242,10 @@ class Actev21():
 
         self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
         
-    def __call__(self, vi, vs=None, minconf=0.04):
+    def __call__(self, vi, vs=None, minconf=0.04, verbose=True):
 
         assert isinstance(vi, vipy.video.Scene)
-        assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
+        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
@@ -202,11 +258,11 @@ class Actev21():
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
         with vs as s:
-            for (f, (vi,im)) in enumerate(zip(detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1),  # activity detection 
-                                              vi.stream().frame(n=-detect.temporal_support()) if s is not None else itertools.repeat(None))):  # streaming visualization (n=delay)
-                if s is not None:
-                    s.write(self._annotator(im).rgb())
-                print(&#39;%s, frame=%d&#39; % (str(vi), f))                    
+            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
+                #if s is not None:
+                #    s.write(self._annotator(im).rgb())
+                if verbose:
+                    print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
                 
         vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
@@ -233,7 +289,7 @@ class Actev21():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/system.py#L119-L124" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L175-L180" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
     return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
@@ -247,84 +303,176 @@ class Actev21():
 </dd>
 <dt id="heyvi.system.Recorder"><code class="flex name class">
 <span>class <span class="ident">Recorder</span></span>
-<span>(</span><span>outfile, fps=30, seconds=None)</span>
+<span>(</span><span>outfile, fps=30)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Record a livestream to an output video file</p>
 <p>This will record an out streaming to the provided outfile</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; R = Recorder('/tmp/out.mp4', framerate=5)
-&gt;&gt;&gt; R(vipy.video.Scene(url='rtsp://...', framerate=30), seconds=60*60)
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = vipy.video.Scene(url='rtsp://...', framerate=30)
+&gt;&gt;&gt; R = Recorder('/tmp/out.mp4', framerate=5)
+&gt;&gt;&gt; R(v, seconds=60*60)
 </code></pre>
 <p>To buffer to memory, you do not need this recorder, use (for small durations):</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; v = vipy.video.Scene(url='rtsp://...', framerate=30).duration(seconds=3).load()
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = v.duration(seconds=3).load().saveas('/tmp/out.mp4')
 </code></pre>
-<p>This will record three seconds from the provided RTSP stream.</p></div>
+<p>This will record three seconds from the provided RTSP stream and save in the usual way to the output file</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/system.py#L44-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L67-L100" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Recorder():
     &#34;&#34;&#34;Record a livestream to an output video file
     
     This will record an out streaming to the provided outfile
 
+    &gt;&gt;&gt; v = vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30)
     &gt;&gt;&gt; R = Recorder(&#39;/tmp/out.mp4&#39;, framerate=5)
-    &gt;&gt;&gt; R(vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30), seconds=60*60)
+    &gt;&gt;&gt; R(v, seconds=60*60)
 
     To buffer to memory, you do not need this recorder, use (for small durations):
 
-    &gt;&gt;&gt; v = vipy.video.Scene(url=&#39;rtsp://...&#39;, framerate=30).duration(seconds=3).load()
+    &gt;&gt;&gt; v = v.duration(seconds=3).load().saveas(&#39;/tmp/out.mp4&#39;)
 
-    This will record three seconds from the provided RTSP stream.
+    This will record three seconds from the provided RTSP stream and save in the usual way to the output file
+    
     &#34;&#34;&#34;
-    def __init__(self, outfile, fps=30, seconds=None):
+    def __init__(self, outfile, fps=30):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-        
+                
     def __repr__(self):
         return &#39;&lt;heyvi.system.Recorder: %s&gt;&#39; % str(self._vo)
     
-    def __call__(self, vi, seconds=None):
+    def __call__(self, vi, seconds=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        vi = vi if seconds is None else vi.clone().clip(0, self._vo.framerate()*seconds)
+        vi = vi if seconds is None else vi.clone().duration(seconds=seconds)
+        vi = vi.framerate(self._vo.framerate())
         with self._vo.stream(overwrite=True) as s:
             for (k,im) in enumerate(vi.stream()):
-                print(&#39;%s, frame=%d&#39; % (str(im), k))
+                if verbose:
+                    print(&#39;[heyvi.system.Recorder][%s][%d]: %s&#39; % (timestamp(), k, im), end=&#39;\r&#39;)                                    
                 s.write(im)                
         return self._vo</code></pre>
 </details>
 </dd>
-<dt id="heyvi.system.YoutubeLive"><code class="flex name class">
-<span>class <span class="ident">YoutubeLive</span></span>
-<span>(</span><span>streamkey, url='rtmp://a.rtmp.youtube.com/live2', fps=30)</span>
+<dt id="heyvi.system.Tracker"><code class="flex name class">
+<span>class <span class="ident">Tracker</span></span>
 </code></dt>
 <dd>
-<div class="desc"><p>Youtube Live stream</p></div>
+<div class="desc"><p>heyvi.system.Tracker class</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = heyvi.sensor.rtsp()
+&gt;&gt;&gt; T = heyvi.system.Tracker()
+&gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+&gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/system.py#L24-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L103-L128" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class Tracker():
+    &#34;&#34;&#34;heyvi.system.Tracker class
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
+    &gt;&gt;&gt; T = heyvi.system.Tracker()
+    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+    &gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+
+    &#34;&#34;&#34;
+    def __init__(self):
+        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
+        assert torch.cuda.device_count() &gt;= 4
+
+        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles  
+        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)   # TESTING: overlapfrac=6-&gt;0
+        
+    def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
+        assert isinstance(vi, vipy.video.Scene)
+
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
+            if callable(frame_callback) and im is not None:
+                frame_callback(im, v)  
+            if verbose and v is not None:
+                print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
+        return vi</code></pre>
+</details>
+</dd>
+<dt id="heyvi.system.YoutubeLive"><code class="flex name class">
+<span>class <span class="ident">YoutubeLive</span></span>
+<span>(</span><span>streamkey=None, url='rtmp://a.rtmp.youtube.com/live2', fps=30, encoder='480p')</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Youtube Live stream.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; Y = heyvi.system.YoutubeLive(encoder='480p')
+&gt;&gt;&gt; v = heyvi.sensor.rtsp()                                                                                                                                                                                                                  
+&gt;&gt;&gt; Y(v)
+</code></pre>
+<h2 id="args">Args</h2>
+<p>encoder [str]['480p, '720p', '360p']:
+The encoder settings for the youtube live stream
+fps [float]:
+The framerate in frames per second of the output stream.<br>
+streamkey [str]:
+The youtube live key (<a href="https://support.google.com/youtube/answer/9854503?hl=en">https://support.google.com/youtube/answer/9854503?hl=en</a>), or set as envronment variable VIPY_YOUTUBE_STREAMKEY</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/system.py#L14-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class YoutubeLive():
-    &#34;&#34;&#34;Youtube Live stream&#34;&#34;&#34;
+    &#34;&#34;&#34;Youtube Live stream.
+
+    &gt;&gt;&gt; Y = heyvi.system.YoutubeLive(encoder=&#39;480p&#39;)
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()                                                                                                                                                                                                                  
+    &gt;&gt;&gt; Y(v)
+
+    Args:
+        encoder [str][&#39;480p, &#39;720p&#39;, &#39;360p&#39;]:  The encoder settings for the youtube live stream
+        fps [float]:  The framerate in frames per second of the output stream.  
+        streamkey [str]:  The youtube live key (https://support.google.com/youtube/answer/9854503?hl=en), or set as envronment variable VIPY_YOUTUBE_STREAMKEY
+
+    &#34;&#34;&#34;
     
-    def __init__(self, streamkey, url=&#39;rtmp://a.rtmp.youtube.com/live2&#39;, fps=30):
+    def __init__(self, streamkey=None, url=&#39;rtmp://a.rtmp.youtube.com/live2&#39;, fps=30, encoder=&#39;480p&#39;):
+        assert streamkey is not None or &#39;VIPY_YOUTUBE_STREAMKEY&#39; in os.environ
+        streamkey = streamkey if streamkey is not None else os.environ[&#39;VIPY_YOUTUBE_STREAMKEY&#39;]
+        
+        # https://support.google.com/youtube/answer/2853702?hl=en#zippy=%2Cp
+        self._encoder_recommended = {&#39;720p&#39;:{&#39;width&#39;:1280, &#39;height&#39;:720, &#39;bitrate&#39;: &#39;4000k&#39;},
+                                     &#39;480p&#39;:{&#39;width&#39;:854, &#39;height&#39;:480, &#39;bitrate&#39;: &#39;1000k&#39;},
+                                     &#39;360p&#39;:{&#39;width&#39;:640, &#39;height&#39;:360, &#39;bitrate&#39;: &#39;1000k&#39;}}
+        
+        assert encoder in self._encoder_recommended
+        self._encoder = self._encoder_recommended[encoder]
+
         self._url = &#39;%s/%s&#39; % (url, streamkey)
         assert vipy.util.isurl(self._url)
         self._vo = vipy.video.Scene(url=self._url, framerate=fps)
-
-    def __repr__(self):
-        return &#39;&lt;heyvi.system.YoutubeLive: %s&gt;&#39; % str(self._vo)
-    
-    def __call__(self, vi):
-        assert isinstance(vi, vipy.video.Scene)
         
-        with self._vo.stream(write=True) as s:
-            for (k,im) in enumerate(vi.stream()):
-                print(k,im)
-                s.write(im)</code></pre>
+    def __repr__(self):
+        return &#39;&lt;heyvi.system.YoutubeLive: url=%s, framerate=%2.1f&gt;&#39; % (str(self._vo.url()), self._vo.framerate())
+
+    def __enter__(self):
+        (h,w,br) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._encoder[&#39;bitrate&#39;])        
+        self._vs = self._vo.stream(write=True, bitrate=br)
+        return lambda im, v=None: self._vs.write(im if im.shape() == (h,w) else im.resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
+
+    def __exit__(self, type, value, tb):
+        self._vs.__exit__(type, value, tb)
+    
+    def __call__(self, vi, verbose=True):
+        assert isinstance(vi, vipy.video.Scene)
+
+        (h,w,fps) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._vo.framerate())
+        with self as s:
+            for (k,im) in enumerate(vi.framerate(fps).resize(height=h, width=w)):
+                if verbose:
+                    print(&#39;[heyvi.system.YoutubeLive][%s][%d]: %s&#39; % (timestamp(), k,im), end=&#39;\r&#39;)
+                s(im)  # write frame to live stream
+        return self</code></pre>
 </details>
 </dd>
 </dl>
@@ -402,6 +550,9 @@ setTimeout(() => input.focus(), 100);
 </li>
 <li>
 <h4><code><a title="heyvi.system.Recorder" href="#heyvi.system.Recorder">Recorder</a></code></h4>
+</li>
+<li>
+<h4><code><a title="heyvi.system.Tracker" href="#heyvi.system.Tracker">Tracker</a></code></h4>
 </li>
 <li>
 <h4><code><a title="heyvi.system.YoutubeLive" href="#heyvi.system.YoutubeLive">YoutubeLive</a></code></h4>

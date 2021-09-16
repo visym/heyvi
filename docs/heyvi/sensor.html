@@ -25,14 +25,34 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/sensor.py#L1-L6" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/sensor.py#L1-L29" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
 
 
-def officecam(fps=30):
-    return vipy.video.Scene(url=&#39;rtsp://%s@10.0.1.14/live0&#39; % os.environ[&#39;VIPY_RTSP_KEY&#39;], framerate=fps)</code></pre>
+def rtsp(url=None, fps=30):
+    &#34;&#34;&#34;Return an RTSP camera.
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
+    &gt;&gt;&gt; im = v.preview().show().saveas(&#39;out.jpg&#39;)
+    &gt;&gt;&gt; for im in v:
+    &gt;&gt;&gt;     print(im)  # live stream 
+    &gt;&gt;&gt;     print(im.numpy())  # of numpy frames
+
+    Args:
+        url: [str]  The URL for the rtsp camera, must start with &#39;rtsp://&#39;
+        fps: [float]  The framerate of the returned camera, can also be set after
+    
+    Env:
+        VIPY_RTSP_URL:  If this environment variable is set, use this as the URL that contains integrated credentials
+    
+    &#34;&#34;&#34;
+    
+    assert url is not None or &#39;VIPY_RTSP_URL&#39; in os.environ
+    url = url if url is not None else os.environ[&#39;VIPY_RTSP_URL&#39;]
+    assert vipy.util.isRTSPurl(url)
+    return vipy.video.Scene(url=url, framerate=fps)    </code></pre>
 </details>
 </section>
 <section>
@@ -42,18 +62,56 @@ def officecam(fps=30):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
-<dt id="heyvi.sensor.officecam"><code class="name flex">
-<span>def <span class="ident">officecam</span></span>(<span>fps=30)</span>
+<dt id="heyvi.sensor.rtsp"><code class="name flex">
+<span>def <span class="ident">rtsp</span></span>(<span>url=None, fps=30)</span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>Return an RTSP camera.</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = heyvi.sensor.rtsp()
+&gt;&gt;&gt; im = v.preview().show().saveas('out.jpg')
+&gt;&gt;&gt; for im in v:
+&gt;&gt;&gt;     print(im)  # live stream 
+&gt;&gt;&gt;     print(im.numpy())  # of numpy frames
+</code></pre>
+<h2 id="args">Args</h2>
+<dl>
+<dt><strong><code>url</code></strong></dt>
+<dd>[str]
+The URL for the rtsp camera, must start with 'rtsp://'</dd>
+<dt><strong><code>fps</code></strong></dt>
+<dd>[float]
+The framerate of the returned camera, can also be set after</dd>
+</dl>
+<h2 id="env">Env</h2>
+<p>VIPY_RTSP_URL:
+If this environment variable is set, use this as the URL that contains integrated credentials</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/a51808829b93a4fe03aecf13e3b01a0f8481e3d1/heyvi/sensor.py#L5-L6" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/62b916f0101dd0de6f105a5ed85e75059a5daa05/heyvi/sensor.py#L5-L26" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def officecam(fps=30):
-    return vipy.video.Scene(url=&#39;rtsp://%s@10.0.1.14/live0&#39; % os.environ[&#39;VIPY_RTSP_KEY&#39;], framerate=fps)</code></pre>
+<pre><code class="python">def rtsp(url=None, fps=30):
+    &#34;&#34;&#34;Return an RTSP camera.
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
+    &gt;&gt;&gt; im = v.preview().show().saveas(&#39;out.jpg&#39;)
+    &gt;&gt;&gt; for im in v:
+    &gt;&gt;&gt;     print(im)  # live stream 
+    &gt;&gt;&gt;     print(im.numpy())  # of numpy frames
+
+    Args:
+        url: [str]  The URL for the rtsp camera, must start with &#39;rtsp://&#39;
+        fps: [float]  The framerate of the returned camera, can also be set after
+    
+    Env:
+        VIPY_RTSP_URL:  If this environment variable is set, use this as the URL that contains integrated credentials
+    
+    &#34;&#34;&#34;
+    
+    assert url is not None or &#39;VIPY_RTSP_URL&#39; in os.environ
+    url = url if url is not None else os.environ[&#39;VIPY_RTSP_URL&#39;]
+    assert vipy.util.isRTSPurl(url)
+    return vipy.video.Scene(url=url, framerate=fps)    </code></pre>
 </details>
 </dd>
 </dl>
@@ -125,7 +183,7 @@ setTimeout(() => input.focus(), 100);
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
-<li><code><a title="heyvi.sensor.officecam" href="#heyvi.sensor.officecam">officecam</a></code></li>
+<li><code><a title="heyvi.sensor.rtsp" href="#heyvi.sensor.rtsp">rtsp</a></code></li>
 </ul>
 </li>
 </ul>
