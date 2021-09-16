@@ -384,8 +384,8 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
                     if i < len(framelist):
                         yield (vi.assign(frame=k*self._detbatchsize+i, dets=im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
                             
-    def __call__(self, vi, stride=1, continuous=False):
-        return self._track(vi, stride, continuous)
+    def __call__(self, vi, stride=1, continuous=False, buffered=True):
+        return self._track(vi, stride, continuous, buffered=buffered)
     
     def stream(self, vi):
         return self._track(vi)
