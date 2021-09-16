@@ -13,39 +13,38 @@ assert heyvi.version.is_exactly('0.0.5')
 
 
     
-def _tensorset():
-    """Export training set to data augmented tensors for fast training"""
-    
-    raise ValueError('FIXME: update hardcoded paths')
-    
-    D_trainset = vipy.util.load('./pip_370k_training/trainset.pkl')
+def _tensorset(trainpkl):
+    """Export training set to data augmented tensors for fast training.  Note this requires a training pickle file, which is prepared separately."""
+
+    assert vipy.util.ispkl(trainpkl)
+    D_trainset = vipy.util.load(trainpkl)
     D_trainset = D_trainset.filter(lambda v: 'mevadata-public-01' not in v.filename() or all(['DIVA-phase-2/MEVA/contrib/' not in a.attributes['act_yaml'] for a in v.activitylist()]))  # non-contrib MEVA videos only                                                                                                                 
     net = heyvi.recognition.PIP_370k(mlfl=True)
     assert set(net.classlist()) == set(D_trainset.classlist())
 
-    shutil.rmtree('./pip_370k_training/trainset')
-    vipy.util.remkdir('./pip_370k_training/trainset')
+    shutil.rmtree('./trainset')
+    vipy.util.remkdir('./trainset')
 
     f_video_to_labeled_tensor = net.totensor(training=True)  # create (tensor, label) pairs with data augmentation                                                                                                                                                                                                                      
-    with vipy.globals.parallel(scheduler='ma01-5200-0045:8785'):
-        D_trainset.to_torch_tensordir(f_video_to_labeled_tensor, './pip_370k_training/trainset', n_augmentations=15, n_chunks=2048)
+    with vipy.globals.parallel(scheduler='ma01-5200-0045:8785'):  # this requires a DASK distributed scheduler, since it takes a while
+        D_trainset.to_torch_tensordir(f_video_to_labeled_tensor, './trainset', n_augmentations=15, n_chunks=2048)
     
 
-def _train(batchsize_per_gpu=32, num_workers_per_gpu=4, outdir='./pip_370k_training/', resume_from_checkpoint=None, valmeva=True, trainmeva=False, trainpip=False):    
-    raise ValueError('FIXME: update hardcoded paths')    
-
-    valset = pycollector.dataset.Dataset('./pip_370k_training/valset.pkl')
+def _train(batchsize_per_gpu=32, num_workers_per_gpu=4, outdir='.', resume_from_checkpoint=None, valmeva=True, trainmeva=False, trainpip=False):    
+    """Train MEVA activity detection model using 8-GPU machine with pre-exported training tensors.  Note that this requires a training and validation pickle file which is preparated separately."""
+    
+    valset = pycollector.dataset.Dataset(os.path.join(outdir, 'valset.pkl'))
     valset = valset if not valmeva else valset.filter(lambda v: 'mevadata-public-01' in v.filename() and not any(['DIVA-phase-2/MEVA/contrib/' in a.attributes['act_yaml'] for a in v.activitylist()]))  # non-contrib MEVA videos only                                                                                                 
     net = heyvi.recognition.PIP_370k(mlfl=True)
-    trainloader = vipy.torch.TorchTensordir('./pip_370k_training/trainset', verbose=False)
+    trainloader = vipy.torch.TorchTensordir(os.path.join(outdir, 'trainset'), verbose=False)
     if trainmeva:
-        D = meva_label_conversion(vipy.dataset.Dataset('./pip_370k_training/trainset.pkl')).filter(lambda v: 'mevadata-public-01' in v.filename() or v.category() in ['person_walks', 'car_moves', 'car', 'person'])
+        D = meva_label_conversion(vipy.dataset.Dataset(os.path.join(outdir, 'trainset.pkl'))).filter(lambda v: 'mevadata-public-01' in v.filename() or v.category() in ['person_walks', 'car_moves', 'car', 'person'])
         iid = set([v.instanceid() for v in D])
         trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
         W = D.multilabel_inverse_frequency_weight()
         net._class_to_weight = {k:W[k] if k in W else 0 for k in net.classlist()}
     elif trainpip:
-        D = pip_label_conversion(vipy.dataset.Dataset('./pip_370k_training/trainset.pkl')).filter(lambda v: 'mevadata-public-01' not in v.filename())
+        D = pip_label_conversion(vipy.dataset.Dataset(os.path.join(outdir, 'trainset.pkl'))).filter(lambda v: 'mevadata-public-01' not in v.filename())
         iid = set([v.instanceid() for v in D])
         trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
         W = D.multilabel_inverse_frequency_weight()
@@ -152,9 +151,9 @@ if __name__ == '__main__':
     
     # Generate a visualization video for all activity detections in this video:
     #
-    #   >>> python system.py --outfile=/path/to/overlay.mp4 --infile=/path/to/source.mp4 --framerate=30.0 --startframe=0 --endframe=1000
-    #   >>> python system.py --infile=./actev-data-repo/corpora/VIRAT-V1/0400/VIRAT_S_040003_02_000197_000552.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
-    #   >>> python system.py --infile=./actev-data-repo/corpora/VIRAT-V1/0000/VIRAT_S_000007.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
+    #   >>> python run_actev21.py --outfile=/path/to/overlay.mp4 --infile=/path/to/source.mp4 --framerate=30.0 --startframe=0 --endframe=1000
+    #   >>> python run_actev21.py --infile=./actev-data-repo/corpora/VIRAT-V1/0400/VIRAT_S_040003_02_000197_000552.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
+    #   >>> python run_actev21.py --infile=./actev-data-repo/corpora/VIRAT-V1/0000/VIRAT_S_000007.mp4 --outfile=/tmp/out.mp4 --minconf=0.5 --startframe=0 --endframe=9000 --outjson=/tmp/out.json
     #
     (d,V) = process_chunk([args.infile], [], [args.framerate], [(args.startframe, args.endframe)], strict=False, outvideo=True)    
     v = vipy.video.Scene.from_json(V[0])

@@ -4,9 +4,10 @@
 
 ## Environment variables
 
-VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'  
-VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'
-VIPY_CACHE='/home/username/.vipy'
+VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'    
+VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'    
+VIPY_CACHE='/home/username/.vipy'    
+
 
 ## Versioning
 
