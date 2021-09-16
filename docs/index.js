@@ -38,7 +38,7 @@ INDEX=[
 {
 "ref":"heyvi",
 "url":0,
-"doc":" \"Hey Vi!\"  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('1.11.1')  Environment VIPY_RTSP_URL='rtsp:  .'  Contact Visym Labs  "
+"doc":" \"Hey Vi!\"  Environment variables VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy'  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
 },
 {
 "ref":"heyvi.sensor",

@@ -23,34 +23,38 @@
 </header>
 <section id="section-intro">
 <h1 id="hey-vi">"Hey Vi!"</h1>
+<h2 id="environment-variables">Environment variables</h2>
+<p>VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'<br>
+VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'
+VIPY_CACHE='/home/username/.vipy'</p>
 <h2 id="versioning">Versioning</h2>
 <p>To determine what heyvi version you are running you can use:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; heyvi.__version__
-&gt;&gt;&gt; heyvi.version.is_at_least('1.11.1') 
+&gt;&gt;&gt; heyvi.version.is_at_least('0.0.6') 
 </code></pre>
-<h2 id="environment">Environment</h2>
-<p>VIPY_RTSP_URL='rtsp://&hellip;'</p>
 <h1 id="contact">Contact</h1>
 <p>Visym Labs <a href="&#109;&#97;&#105;&#108;&#116;&#111;&#58;&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;">&#105;&#110;&#102;&#111;&#64;&#118;&#105;&#115;&#121;&#109;&#46;&#99;&#111;&#109;</a></p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0234c469eb04bc859ec442fbe00e830f7f7222b1/heyvi/__init__.py#L1-L31" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/5053e7d9cd402fe53268ffa7850f6bdec5bfd6e2/heyvi/__init__.py#L1-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 
 # \&#34;Hey Vi!\&#34;
+
+## Environment variables
+
+VIPY_RTSP_URL=&#39;rtsp://user@password:127.0.0.1&#39;  
+VIPY_YOUTUBE_STREAMKEY=&#39;xxxx-xxxx-xxxx-xxxx-xxxx&#39;
+VIPY_CACHE=&#39;/home/username/.vipy&#39;
 
 ## Versioning
 
 To determine what heyvi version you are running you can use:
 
 &gt;&gt;&gt; heyvi.__version__
-&gt;&gt;&gt; heyvi.version.is_at_least(&#39;1.11.1&#39;) 
-
-## Environment 
-
-VIPY_RTSP_URL=&#39;rtsp://...&#39;
+&gt;&gt;&gt; heyvi.version.is_at_least(&#39;0.0.6&#39;) 
 
 
 # Contact
@@ -169,8 +173,8 @@ setTimeout(() => input.focus(), 100);
 <div class="toc">
 <ul>
 <li><a href="#hey-vi">"Hey Vi!"</a><ul>
+<li><a href="#environment-variables">Environment variables</a></li>
 <li><a href="#versioning">Versioning</a></li>
-<li><a href="#environment">Environment</a></li>
 </ul>
 </li>
 <li><a href="#contact">Contact</a></li>
