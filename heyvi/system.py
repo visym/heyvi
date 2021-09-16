@@ -14,9 +14,9 @@ from heyvi.util import timestamp
 class YoutubeLive():
     """Youtube Live stream.
 
-    >>> s = heyvi.system.YoutubeLive()
+    >>> Y = heyvi.system.YoutubeLive(encoder='480p')
     >>> v = heyvi.sensor.rtsp()                                                                                                                                                                                                                  
-    >>> s(v)
+    >>> Y(v)
 
     Args:
         encoder [str]['480p, '720p', '360p']:  The encoder settings for the youtube live stream
@@ -101,6 +101,14 @@ class Recorder():
                 
 
 class Tracker():
+    """heyvi.system.Tracker class
+
+    >>> v = heyvi.sensor.rtsp()
+    >>> T = heyvi.system.Tracker()
+    >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+    >>>     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+
+    """
     def __init__(self):
         assert vipy.version.is_at_least('1.11.10')
         assert heyvi.version.is_at_least('0.0.5')        
@@ -114,7 +122,7 @@ class Tracker():
 
         for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
             if callable(frame_callback) and im is not None:
-                frame_callback(im, v)  # FIXME: who owns the annotation
+                frame_callback(im, v)  
             if verbose and v is not None:
                 print('[heyvi.system.Tracker][%s][%d]: %s' % (timestamp(), k, str(v)+' '*100), end='\r')
         return vi
