@@ -30,21 +30,22 @@ def _tensorset(trainpkl):
         D_trainset.to_torch_tensordir(f_video_to_labeled_tensor, './trainset', n_augmentations=15, n_chunks=2048)
     
 
-def _train(batchsize_per_gpu=32, num_workers_per_gpu=4, outdir='.', resume_from_checkpoint=None, valmeva=True, trainmeva=False, trainpip=False):    
+def _train(trainpkl, valpkl, batchsize_per_gpu=32, num_workers_per_gpu=4, outdir='.', resume_from_checkpoint=None, valmeva=True, trainmeva=False, trainpip=False):    
     """Train MEVA activity detection model using 8-GPU machine with pre-exported training tensors.  Note that this requires a training and validation pickle file which is preparated separately."""
-    
-    valset = pycollector.dataset.Dataset(os.path.join(outdir, 'valset.pkl'))
+
+    assert vipy.util.ispkl(valpkl) and vipy.util.ispkl(trainpkl)    
+    valset = pycollector.dataset.Dataset(valpkl)
     valset = valset if not valmeva else valset.filter(lambda v: 'mevadata-public-01' in v.filename() and not any(['DIVA-phase-2/MEVA/contrib/' in a.attributes['act_yaml'] for a in v.activitylist()]))  # non-contrib MEVA videos only                                                                                                 
     net = heyvi.recognition.PIP_370k(mlfl=True)
     trainloader = vipy.torch.TorchTensordir(os.path.join(outdir, 'trainset'), verbose=False)
     if trainmeva:
-        D = meva_label_conversion(vipy.dataset.Dataset(os.path.join(outdir, 'trainset.pkl'))).filter(lambda v: 'mevadata-public-01' in v.filename() or v.category() in ['person_walks', 'car_moves', 'car', 'person'])
+        D = meva_label_conversion(vipy.dataset.Dataset(trainpkkl)).filter(lambda v: 'mevadata-public-01' in v.filename() or v.category() in ['person_walks', 'car_moves', 'car', 'person'])
         iid = set([v.instanceid() for v in D])
         trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
         W = D.multilabel_inverse_frequency_weight()
         net._class_to_weight = {k:W[k] if k in W else 0 for k in net.classlist()}
     elif trainpip:
-        D = pip_label_conversion(vipy.dataset.Dataset(os.path.join(outdir, 'trainset.pkl'))).filter(lambda v: 'mevadata-public-01' not in v.filename())
+        D = pip_label_conversion(vipy.dataset.Dataset(trainpkl)).filter(lambda v: 'mevadata-public-01' not in v.filename())
         iid = set([v.instanceid() for v in D])
         trainloader.filter(lambda f: vipy.util.filebase(f.split('.pkl.bz2')[0]) in iid)
         W = D.multilabel_inverse_frequency_weight()
