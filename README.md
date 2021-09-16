@@ -3,8 +3,8 @@
 \"Hey Vi!\"
 -------------------
 
-HEYVI: Visym Analytics for Visual AI
-docs: https://visym.github.io/heyvi/
+HEYVI: Visym Analytics for Visual AI    
+docs: https://dev.visym.com/heyvi
 
 HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos.
 
@@ -20,7 +20,7 @@ Requirements
 -------------------
 python >3.6  
 [ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
-vipy, torch, pytorch_lightning (for training)
+[vipy](https://github.com/visym/vipy), torch, pytorch_lightning (for training)
 
 
 Installation
@@ -37,10 +37,10 @@ Quickstart
 v = heyvi.sensor.rtsp()
 T = heyvi.system.Tracker()
 with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
-     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+     T(v, frame_callback=lambda im, v: s(im.annotate().rgb()))
 ```
 
-Create a default RTSP camera and GPU enabled object tracker, then stream the annotated video (e.g. boxes with captions and timestamps) to a YouTube live stream.
+Create a default RTSP camera and GPU enabled object tracker, then stream the annotated video (e.g. bounding boxes with captions) to a YouTube live stream.
 
 
 
