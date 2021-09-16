@@ -4,6 +4,7 @@
 -------------------
 
 HEYVI: Visym Analytics for Visual AI
+docs: https://visym.github.io/heyvi/
 
 HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos.
 
