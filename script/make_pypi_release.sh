@@ -11,7 +11,7 @@ git push
 # Make release
 cd ..
 git tag $1 -m "heyvi-$1"
-git push --tags origin master
+git push --tags origin main
 
 python3 setup.py sdist bdist_wheel
 twine upload dist/*
