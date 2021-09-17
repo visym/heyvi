@@ -40,7 +40,7 @@ with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
      T(v, frame_callback=lambda im, v: s(im.pixelize().annotate().rgb()))
 ```
 
-Create a default RTSP camera and GPU enabled object tracker, then stream the annotated video (e.g. bounding boxes with captions) to a YouTube live stream.
+Create a default RTSP camera and GPU enabled object tracker, then stream the privacy preserving annotated video (e.g. pixelated bounding boxes with captions) to a YouTube live stream.
 
 
 [![YoutubeLive stream](https://img.youtube.com/vi/rMuuRpBCaVU/maxresdefault.jpg)](https://youtu.be/rMuuRpBCaVU)
