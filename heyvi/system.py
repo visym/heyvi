@@ -47,7 +47,7 @@ class YoutubeLive():
     def __enter__(self):
         (h,w,br) = (self._encoder['height'], self._encoder['width'], self._encoder['bitrate'])        
         self._vs = self._vo.stream(write=True, bitrate=br)
-        return lambda im: self._vs.write(im if im.shape() == (h,w) else im.resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
+        return lambda im: self._vs.write(im.rgb() if im.shape() == (h,w) else im.rgb().resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
 
     def __exit__(self, type, value, tb):
         self._vs.__exit__(type, value, tb)
@@ -94,7 +94,7 @@ class Recorder():
         
     def __enter__(self):
         self._vs = self._vo.stream(write=True, overwrite=self._overwrite)
-        return lambda im: self._vs.write(im)  
+        return lambda im: self._vs.write(im.rgb())  
 
     def __exit__(self, type, value, tb):
         self._vs.__exit__(type, value, tb)
@@ -121,7 +121,7 @@ class Tracker():
     >>> v = heyvi.sensor.rtsp()
     >>> T = heyvi.system.Tracker()
     >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
-    >>>     T(v, frame_callback=lambda im: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+    >>>     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
 
     """
     def __init__(self):
