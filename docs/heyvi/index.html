@@ -23,13 +23,24 @@
 </header>
 <section id="section-intro">
 <h1 id="hey-vi">"Hey Vi!"</h1>
+<p>HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos.</p>
+<p>HEYVI provides:
+</p>
+<ul>
+<li>Real time activity detection of the <a href="https://mevadata.org">MEVA activity classes</a></li>
+<li>Real time visual object tracking in long duration videos</li>
+<li>Live streaming of annotated videos to youtube live</li>
+<li>Visual AI from RTSP cameras</li>
+</ul>
 <h2 id="environment-variables">Environment variables</h2>
+<p>The following environment varibles may be set by the client:</p>
 <p>VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'
 <br>
 VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'
 <br>
 VIPY_CACHE='/home/username/.vipy'
 </p>
+<p>For additional environment variables, refer to the vipy package.</p>
 <h2 id="versioning">Versioning</h2>
 <p>To determine what heyvi version you are running you can use:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; heyvi.__version__
@@ -40,17 +51,32 @@ VIPY_CACHE='/home/username/.vipy'
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/__init__.py#L1-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/__init__.py#L1-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 
 # \&#34;Hey Vi!\&#34;
 
+HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos.
+
+HEYVI provides:  
+
+* Real time activity detection of the [MEVA activity classes](https://mevadata.org)
+* Real time visual object tracking in long duration videos
+* Live streaming of annotated videos to youtube live
+* Visual AI from RTSP cameras
+
+
 ## Environment variables
+
+The following environment varibles may be set by the client:
 
 VIPY_RTSP_URL=&#39;rtsp://user@password:127.0.0.1&#39;    
 VIPY_YOUTUBE_STREAMKEY=&#39;xxxx-xxxx-xxxx-xxxx-xxxx&#39;    
 VIPY_CACHE=&#39;/home/username/.vipy&#39;    
+
+For additional environment variables, refer to the vipy package.
+
 
 ## Versioning
 

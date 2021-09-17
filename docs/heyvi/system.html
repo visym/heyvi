@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L1-L181" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L1-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
@@ -76,7 +76,7 @@ class YoutubeLive():
     def __enter__(self):
         (h,w,br) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._encoder[&#39;bitrate&#39;])        
         self._vs = self._vo.stream(write=True, bitrate=br)
-        return lambda im, v=None: self._vs.write(im if im.shape() == (h,w) else im.resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
+        return lambda im: self._vs.write(im.rgb() if im.shape() == (h,w) else im.rgb().resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
 
     def __exit__(self, type, value, tb):
         self._vs.__exit__(type, value, tb)
@@ -107,12 +107,27 @@ class Recorder():
     &gt;&gt;&gt; v = v.duration(seconds=3).load().saveas(&#39;/tmp/out.mp4&#39;)
 
     This will record three seconds from the provided RTSP stream and save in the usual way to the output file
-    
+
+    To record frame by frame:
+
+    &gt;&gt;&gt; v = vipy.video.RandomScene()
+    &gt;&gt;&gt; with Recorder(&#39;out.mp4&#39;) as r:
+    &gt;&gt;&gt;    for im in v:
+    &gt;&gt;&gt;        r(im.annotate().rgb())  # write individual frames from video v
+
     &#34;&#34;&#34;
-    def __init__(self, outfile, fps=30):
+    def __init__(self, outfile, fps=30, overwrite=False):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-                
+        self._overwrite = overwrite
+        
+    def __enter__(self):
+        self._vs = self._vo.stream(write=True, overwrite=self._overwrite)
+        return lambda im: self._vs.write(im.rgb())  
+
+    def __exit__(self, type, value, tb):
+        self._vs.__exit__(type, value, tb)
+        
     def __repr__(self):
         return &#39;&lt;heyvi.system.Recorder: %s&gt;&#39; % str(self._vo)
     
@@ -135,11 +150,11 @@ class Tracker():
     &gt;&gt;&gt; v = heyvi.sensor.rtsp()
     &gt;&gt;&gt; T = heyvi.system.Tracker()
     &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
-    &gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+    &gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
 
     &#34;&#34;&#34;
     def __init__(self):
-        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
         assert torch.cuda.device_count() &gt;= 4
 
@@ -149,9 +164,9 @@ class Tracker():
     def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
-                frame_callback(im, v)  
+                frame_callback(im)  
             if verbose and v is not None:
                 print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
         return vi
@@ -159,9 +174,20 @@ class Tracker():
 
             
 class Actev21():
+    &#34;&#34;&#34;heyvi.system.Actev21 class
+
+    Real time activity detection for the 37 MEVA (https://mevadata.org) activity classes
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp().framerate(5)
+    &gt;&gt;&gt; S = heyvi.system.Actev21()
+    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+    &gt;&gt;&gt;     S(v, frame_callback=lambda im, imraw, v: s(im), minconf=0.2)
+
+    &#34;&#34;&#34;
+    
     def __init__(self):
 
-        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)
         assert torch.cuda.device_count() &gt;= 4
         
@@ -169,12 +195,11 @@ class Actev21():
                                                          vipy.util.tocache(&#39;mlfl_v5_epoch_41-step_59279.ckpt&#39;),  # set VIPY_CACHE env 
                                                          sha1=&#39;c4457e5b2e4fa1462d552070c47cac9eb2833e47&#39;)
 
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
+        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
         
-    def __call__(self, vi, vs=None, minconf=0.04, verbose=True):
+    def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None):
 
         assert isinstance(vi, vipy.video.Scene)
-        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
@@ -186,12 +211,11 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
-        with vs as s:
-            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
-                #if s is not None:
-                #    s.write(self._annotator(im).rgb())
-                if verbose:
-                    print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
+        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3, buffered=vi.islive()), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive()))):  # activity detection
+            if callable(frame_callback) and im is not None:
+                frame_callback(self._annotator(im.clone()), im, vi)  
+            if verbose:
+                print(&#39;[heyvi.system.Actev21][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
                 
         vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
@@ -223,16 +247,33 @@ class Actev21():
 <span>class <span class="ident">Actev21</span></span>
 </code></dt>
 <dd>
-<div class="desc"></div>
+<div class="desc"><p>heyvi.system.Actev21 class</p>
+<p>Real time activity detection for the 37 MEVA (<a href="https://mevadata.org">https://mevadata.org</a>) activity classes</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = heyvi.sensor.rtsp().framerate(5)
+&gt;&gt;&gt; S = heyvi.system.Actev21()
+&gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+&gt;&gt;&gt;     S(v, frame_callback=lambda im, imraw, v: s(im), minconf=0.2)
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L132-L180" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L147-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Actev21():
+    &#34;&#34;&#34;heyvi.system.Actev21 class
+
+    Real time activity detection for the 37 MEVA (https://mevadata.org) activity classes
+
+    &gt;&gt;&gt; v = heyvi.sensor.rtsp().framerate(5)
+    &gt;&gt;&gt; S = heyvi.system.Actev21()
+    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+    &gt;&gt;&gt;     S(v, frame_callback=lambda im, imraw, v: s(im), minconf=0.2)
+
+    &#34;&#34;&#34;
+    
     def __init__(self):
 
-        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)
         assert torch.cuda.device_count() &gt;= 4
         
@@ -240,12 +281,11 @@ class Actev21():
                                                          vipy.util.tocache(&#39;mlfl_v5_epoch_41-step_59279.ckpt&#39;),  # set VIPY_CACHE env 
                                                          sha1=&#39;c4457e5b2e4fa1462d552070c47cac9eb2833e47&#39;)
 
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate()
+        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
         
-    def __call__(self, vi, vs=None, minconf=0.04, verbose=True):
+    def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None):
 
         assert isinstance(vi, vipy.video.Scene)
-        #assert vi.isloaded() or not vipy.util.isRTSPurl(vi.url()), &#34;Use the Recorder() or buffer an RTSP stream before processing&#34;
         assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
                 
         objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
@@ -257,12 +297,11 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
-        with vs as s:
-            for (f, (im,vi)) in enumerate(zip(vi, detect(track(vi, stride=3), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1))):  # activity detection 
-                #if s is not None:
-                #    s.write(self._annotator(im).rgb())
-                if verbose:
-                    print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
+        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3, buffered=vi.islive()), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive()))):  # activity detection
+            if callable(frame_callback) and im is not None:
+                frame_callback(self._annotator(im.clone()), im, vi)  
+            if verbose:
+                print(&#39;[heyvi.system.Actev21][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
                 
         vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
         vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
@@ -289,7 +328,7 @@ class Actev21():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L175-L180" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L199-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
     return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
@@ -303,7 +342,7 @@ class Actev21():
 </dd>
 <dt id="heyvi.system.Recorder"><code class="flex name class">
 <span>class <span class="ident">Recorder</span></span>
-<span>(</span><span>outfile, fps=30)</span>
+<span>(</span><span>outfile, fps=30, overwrite=False)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Record a livestream to an output video file</p>
@@ -315,11 +354,17 @@ class Actev21():
 <p>To buffer to memory, you do not need this recorder, use (for small durations):</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; v = v.duration(seconds=3).load().saveas('/tmp/out.mp4')
 </code></pre>
-<p>This will record three seconds from the provided RTSP stream and save in the usual way to the output file</p></div>
+<p>This will record three seconds from the provided RTSP stream and save in the usual way to the output file</p>
+<p>To record frame by frame:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; v = vipy.video.RandomScene()
+&gt;&gt;&gt; with Recorder('out.mp4') as r:
+&gt;&gt;&gt;    for im in v:
+&gt;&gt;&gt;        r(im.annotate().rgb())  # write individual frames from video v
+</code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L67-L100" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L67-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Recorder():
     &#34;&#34;&#34;Record a livestream to an output video file
@@ -335,12 +380,27 @@ class Actev21():
     &gt;&gt;&gt; v = v.duration(seconds=3).load().saveas(&#39;/tmp/out.mp4&#39;)
 
     This will record three seconds from the provided RTSP stream and save in the usual way to the output file
-    
+
+    To record frame by frame:
+
+    &gt;&gt;&gt; v = vipy.video.RandomScene()
+    &gt;&gt;&gt; with Recorder(&#39;out.mp4&#39;) as r:
+    &gt;&gt;&gt;    for im in v:
+    &gt;&gt;&gt;        r(im.annotate().rgb())  # write individual frames from video v
+
     &#34;&#34;&#34;
-    def __init__(self, outfile, fps=30):
+    def __init__(self, outfile, fps=30, overwrite=False):
         assert vipy.util.isvideo(outfile)
         self._vo = vipy.video.Scene(filename=outfile, framerate=fps)
-                
+        self._overwrite = overwrite
+        
+    def __enter__(self):
+        self._vs = self._vo.stream(write=True, overwrite=self._overwrite)
+        return lambda im: self._vs.write(im.rgb())  
+
+    def __exit__(self, type, value, tb):
+        self._vs.__exit__(type, value, tb)
+        
     def __repr__(self):
         return &#39;&lt;heyvi.system.Recorder: %s&gt;&#39; % str(self._vo)
     
@@ -365,12 +425,12 @@ class Actev21():
 <pre><code class="language-python-repl">&gt;&gt;&gt; v = heyvi.sensor.rtsp()
 &gt;&gt;&gt; T = heyvi.system.Tracker()
 &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
-&gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+&gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
 </code></pre></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L103-L128" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L118-L143" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tracker():
     &#34;&#34;&#34;heyvi.system.Tracker class
@@ -378,11 +438,11 @@ class Actev21():
     &gt;&gt;&gt; v = heyvi.sensor.rtsp()
     &gt;&gt;&gt; T = heyvi.system.Tracker()
     &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
-    &gt;&gt;&gt;     T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10)).rgb()), minconf=0.2)
+    &gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
 
     &#34;&#34;&#34;
     def __init__(self):
-        assert vipy.version.is_at_least(&#39;1.11.10&#39;)
+        assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
         assert torch.cuda.device_count() &gt;= 4
 
@@ -392,9 +452,9 @@ class Actev21():
     def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3))):
+        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
-                frame_callback(im, v)  
+                frame_callback(im)  
             if verbose and v is not None:
                 print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
         return vi</code></pre>
@@ -420,7 +480,7 @@ The youtube live key (<a href="https://support.google.com/youtube/answer/9854503
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/118a6e50f40bcee8fb0d206850d848cf40e593db/heyvi/system.py#L14-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/6bc1adb205b05ad378180a8c214914cf7b5d1b6b/heyvi/system.py#L14-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class YoutubeLive():
     &#34;&#34;&#34;Youtube Live stream.
@@ -458,7 +518,7 @@ The youtube live key (<a href="https://support.google.com/youtube/answer/9854503
     def __enter__(self):
         (h,w,br) = (self._encoder[&#39;height&#39;], self._encoder[&#39;width&#39;], self._encoder[&#39;bitrate&#39;])        
         self._vs = self._vo.stream(write=True, bitrate=br)
-        return lambda im, v=None: self._vs.write(im if im.shape() == (h,w) else im.resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
+        return lambda im: self._vs.write(im.rgb() if im.shape() == (h,w) else im.rgb().resize(height=h, width=w))  # quiet anisotropic resize to stream dimensions
 
     def __exit__(self, type, value, tb):
         self._vs.__exit__(type, value, tb)

@@ -38,7 +38,7 @@ INDEX=[
 {
 "ref":"heyvi",
 "url":0,
-"doc":" \"Hey Vi!\"  Environment variables VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy'  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
+"doc":" \"Hey Vi!\" HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos. HEYVI provides:  Real time activity detection of the [MEVA activity classes](https: mevadata.org)  Real time visual object tracking in long duration videos  Live streaming of annotated videos to youtube live  Visual AI from RTSP cameras  Environment variables The following environment varibles may be set by the client: VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy' For additional environment variables, refer to the vipy package.  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
 },
 {
 "ref":"heyvi.sensor",
@@ -64,17 +64,17 @@ INDEX=[
 {
 "ref":"heyvi.system.Recorder",
 "url":2,
-"doc":"Record a livestream to an output video file This will record an out streaming to the provided outfile >>> v = vipy.video.Scene(url='rtsp:  .', framerate=30) >>> R = Recorder('/tmp/out.mp4', framerate=5) >>> R(v, seconds=60 60) To buffer to memory, you do not need this recorder, use (for small durations): >>> v = v.duration(seconds=3).load().saveas('/tmp/out.mp4') This will record three seconds from the provided RTSP stream and save in the usual way to the output file"
+"doc":"Record a livestream to an output video file This will record an out streaming to the provided outfile >>> v = vipy.video.Scene(url='rtsp:  .', framerate=30) >>> R = Recorder('/tmp/out.mp4', framerate=5) >>> R(v, seconds=60 60) To buffer to memory, you do not need this recorder, use (for small durations): >>> v = v.duration(seconds=3).load().saveas('/tmp/out.mp4') This will record three seconds from the provided RTSP stream and save in the usual way to the output file To record frame by frame: >>> v = vipy.video.RandomScene() >>> with Recorder('out.mp4') as r: >>> for im in v: >>> r(im.annotate().rgb(  write individual frames from video v"
 },
 {
 "ref":"heyvi.system.Tracker",
 "url":2,
-"doc":"heyvi.system.Tracker class >>> v = heyvi.sensor.rtsp() >>> T = heyvi.system.Tracker() >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: >>> T(v, frame_callback=lambda im, v: s(im.annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10 .rgb( , minconf=0.2)"
+"doc":"heyvi.system.Tracker class >>> v = heyvi.sensor.rtsp() >>> T = heyvi.system.Tracker() >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: >>> T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10 ), minconf=0.5)"
 },
 {
 "ref":"heyvi.system.Actev21",
 "url":2,
-"doc":""
+"doc":"heyvi.system.Actev21 class Real time activity detection for the 37 MEVA (https: mevadata.org) activity classes >>> v = heyvi.sensor.rtsp().framerate(5) >>> S = heyvi.system.Actev21() >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: >>> S(v, frame_callback=lambda im, imraw, v: s(im), minconf=0.2)"
 },
 {
 "ref":"heyvi.system.Actev21.annotate",
