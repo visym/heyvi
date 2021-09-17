@@ -37,13 +37,14 @@ Quickstart
 v = heyvi.sensor.rtsp().framerate(5)
 T = heyvi.system.Tracker()
 with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
-     T(v, frame_callback=lambda im, v: s(im.annotate().rgb()))
+     T(v, frame_callback=lambda im, v: s(im.pixelize().annotate().rgb()))
 ```
 
 Create a default RTSP camera and GPU enabled object tracker, then stream the annotated video (e.g. bounding boxes with captions) to a YouTube live stream.
 
 
-[![YoutubeLive stream](https://img.youtube.com/vi/yRa76mIz0tU/maxresdefault.jpg)](https://youtu.be/yRa76mIz0tU)
+[![YoutubeLive stream](https://img.youtube.com/vi/rMuuRpBCaVU/maxresdefault.jpg)](https://youtu.be/rMuuRpBCaVU)
+
 
 
 
