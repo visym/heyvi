@@ -27,7 +27,7 @@ def rtsp(url=None, fps=30):
 
 
 
-def cameralist(offline=True):
+def cameralist(online=False):
     """Return all online RTSP cameras set up on the current network.
 
     This requires setting environment variables:
@@ -37,8 +37,7 @@ def cameralist(offline=True):
     VIPY_RTSP_URL_2='rtsp://user:passwd@ip.addr.2'
 
     Args:
-        offline [bool]: If True, return all cameras.  If false, only return those online (requires frame fetch)
+        online [bool]: If True, return only those cameras that are online.  If a camera is offline return None in that camera index.  If false, return all cameras
     """
-    return [rtsp(url=os.environ[k])
-            for k in sorted([k for k in os.environ.keys() if k.startswith('VIPY_RTSP_URL_')], key=lambda x: int(x.split('_')[-1]))
-            if offline or rtsp(url=os.environ[k]).canload()]
+    return [rtsp(url=os.environ[k]) if (not online or rtsp(url=os.environ[k]).canload()) else None
+            for k in sorted([k for k in os.environ.keys() if k.startswith('VIPY_RTSP_URL_')], key=lambda x: int(x.split('_')[-1]))]
