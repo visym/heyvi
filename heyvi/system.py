@@ -182,7 +182,9 @@ class Actev21():
         (srcdim, srcfps) = (vi.mindim(), vi.framerate())
         vs = vs if vs is not None else contextlib.nullcontext()                
         vi = vi.mindim(960).framerate(5)
-        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), detect(track(vi, stride=3, buffered=vi.islive()), mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive()))):  # activity detection
+        for (f, (im,vi)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5),
+                                          detect(track(vi, stride=3, buffered=vi.islive()),
+                                                 mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive(), finalized=30*5 if vi.islive() else True))): 
             if callable(frame_callback) and im is not None:
                 frame_callback(self._annotator(im.clone()), im, vi)  
             if verbose:
