@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L1-L603" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L1-L649" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -421,7 +421,24 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         return f(v) if v is not None else f
 
 
-class ActivityTracker(PIP_370k): 
+class ActivityTracker(PIP_370k):
+    &#34;&#34;&#34;Video Activity detection.
+        
+    Args (__call__):
+        vi [generator of `vipy.video.Scene`]:  The input video to be updated in place with detections.  This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__
+        activityiou [float]: The minimum temporal iou for activity assignment
+        mirror [bool]:  If true, encode using the mean of a video encoding and the mirrored video encoding.  This is slower as it requires 2x GPU forward passes
+        minprob [float]: The minimum probability for new activity detection
+        trackconf [float]: The minimum object detection confidence for new tracks
+        maxdets [int]:  The maximum number of allowable detections per frame.  If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best
+        avgdets [int]:  The number of allowable detections per frame if throttled
+        buffered [bool]:  If true, then buffer streams.  This is useful for activity detection on live streams.            
+        finalized [bool, int]:  If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames.  This is useful for streaming activity detection on unbounded inputs. 
+        
+    Returns:
+        The input video is updated in place.
+    
+    &#34;&#34;&#34;    
     def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
         assert modelfile is not None, &#34;Contact &lt;info@visym.com&gt; for access to non-public model files&#34;
 
@@ -463,7 +480,7 @@ class ActivityTracker(PIP_370k):
             del x  # force garbage collection
             return x_forward
 
-    def lrt(self, x_logits, lrt_threshold):
+    def lrt(self, x_logits, lrt_threshold=None):
         &#34;&#34;&#34;top-k with likelihood ratio test with background null hypothesis&#34;&#34;&#34;
         j_bg_person = self._class_to_index[&#39;person&#39;] if &#39;person&#39; in self._class_to_index else self._class_to_index[&#39;person_walks&#39;]  # FIXME
         j_bg_vehicle = self._class_to_index[&#39;vehicle&#39;] if &#39;vehicle&#39; in self._class_to_index else self._class_to_index[&#39;car_moves&#39;]  # FIXME
@@ -476,7 +493,138 @@ class ActivityTracker(PIP_370k):
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] &gt;= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
 
-    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True, buffered=True):
+    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+        &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
+        assert isinstance(vo, vipy.video.Scene)
+
+        tofinalize = set([ai for (ai,a) in vo.activities().items() if (endframe is None or a.endframe() &lt;= endframe) and (startframe is None or a.endframe() &gt;= startframe)])
+        tofinalize = tofinalize.union([ti for (ti,t) in vo.tracks().items() if ((endframe is None or t.endframe() &lt;= endframe) and (startframe is None or t.endframe() &gt;= startframe)) or any([ti == vo.activities(id=ai).actorid() for ai in tofinalize])])
+
+        # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
+        # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
+        if trackconf is not None:
+            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+        
+        # Activity probability:  noun_probability*verb probability
+        nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
+        vo.activitymap(lambda a: a.confidence(nounconf[a.actorid()]*a.confidence()) if a.id() in tofinalize else a)
+        
+        # Missing objects:  Significantly reduce confidence of complex classes (yuck)
+        vo.activitymap(lambda a: a.confidence(0.01*a.confidence()) if (a.id() in tofinalize and a.category() in [&#39;person_purchases&#39;]) else a) 
+        
+        # Vehicle turns:  High confidence vehicle turns must be a minimum angle
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                      (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &lt; (np.pi/16))) else a) 
+        
+        # Vehicle turns:  U-turn can only be distinguished from left/right turn at the end of a track by looking at the turn angle
+        vo.activitymap(lambda a: a.category(&#39;vehicle_makes_u_turn&#39;).shortlabel(&#39;u turn&#39;) if (a.id() in tofinalize and
+                                                                                             (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                                             (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
+        
+        # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
+        f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
+        vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], -1.5)) if a.id() in tofinalize else a)
+        
+        # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() in [&#39;vehicle_starts&#39;, &#39;vehicle_stops&#39;] and
+                                                                      abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) &lt; 1) else a)
+        vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_starts&#39;) else a)
+        vo.activitymap(lambda a: a.padto(5).offset(-int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_stops&#39;) else a)
+        
+        # Vehicle/person interaction: &#39;vehicle_drops_off_person&#39;/&#39;vehicle_picks_up_person&#39;  must be followed by car driving away/pulling up, must be accompanied by person track start/end
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() == &#39;vehicle_drops_off_person&#39; and
+                                                                      (not vo.track(a.actorid()).ismoving(a.middleframe(), a.endframe()+10*vo.framerate()) or
+                                                                       not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.startframe(), t.startframe()+1) &gt; 0 for t in vo.tracks().values()]))) else a)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() == &#39;vehicle_picks_up_person&#39; and
+                                                                      (not vo.track(a.actorid()).ismoving(a.startframe()-10*vo.framerate(), a.middleframe()) or
+                                                                       not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.endframe()-1, t.endframe()) &gt; 0 for t in vo.tracks().values()]))) else a)
+        
+        # Person/Bicycle track: riding must be accompanied by an associated moving bicycle track
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.category() != &#39;person_rides_bicycle&#39;)
+        bikelist = [vo.add(vipy.activity.Activity(startframe=t.startframe(), endframe=t.endframe(), category=&#39;person_rides_bicycle&#39;, shortlabel=&#39;rides&#39;, confidence=t.confidence(samples=8), framerate=vo.framerate(), actorid=t.id(), attributes={&#39;pip&#39;:&#39;person_rides_bicycle&#39;}))
+                    for (tk,t) in vo.tracks().items() if (t.id() in tofinalize and t.category() == &#39;bicycle&#39; and t.ismoving())]
+        
+        # Person/Vehicle track: person/vehicle interaction must be accompanied by an associated stopped vehicle track
+        dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if (a.id() in tofinalize and a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category()))}  # precompute            
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      (a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category())) and
+                                                                      not any([t.category() == &#39;vehicle&#39; and 
+                                                                               t.during(a.startframe()) and
+                                                                               not t.ismoving(a.startframe(), a.endframe()) and
+                                                                               t[a.startframe()].hasintersection(dstbox[a._id])
+                                                                               for t in vo.tracks().values()])) else a)
+        
+        # Vehicle/Person track: vehicle/person interaction must be accompanied by an associated person track
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and (a.category().startswith(&#39;vehicle&#39;) and (&#39;person&#39; in a.category())) and not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), a._startframe, a._endframe) &gt; 0 for t in vo.tracks().values()])) else a)
+        
+        # Person track: enter/exit scene cannot be at the image boundary
+        boundary = vo.framebox().dilate(0.9)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_enters_scene_through_structure&#39; and vo.track(a.actorid())[max(a.startframe(), vo.track(a.actorid()).startframe())].cover(boundary) &lt; 1) else a)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_exits_scene_through_structure&#39; and vo.track(a.actorid())[min(a.endframe(), vo.track(a.actorid()).endframe())].cover(boundary) &lt; 1) else a)
+        
+        # Activity union:  Temporal gaps less than support should be merged into one activity detection for a single track
+        # Activity union:  &#34;Brief&#34; breaks (&lt;5 seconds) of confident activities should be merged into one activity detection for a single track
+        briefmerge = set([&#39;person_reads_document&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_talks_to_person&#39;, &#39;person_purchases&#39;, &#39;person_steals_object&#39;, &#39;person_talks_on_phone&#39;, &#39;person_texts_on_phone&#39;, &#39;person_rides_bicycle&#39;, &#39;person_carries_heavy_object&#39;, &#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])  
+        merged = set([])
+        mergeable_dets = [a for a in vo.activities().values() if a.id() in tofinalize and a.confidence() &gt; 0.2]  # only mergeable detections
+        mergeable_dets.sort(key=lambda a: a.startframe())  # in-place
+        for a in mergeable_dets:
+            for o in mergeable_dets:
+                if ((o._startframe &gt;= a._startframe) and (a._id != o._id) and (o._actorid == a._actorid) and (o._label == a._label) and (o._id not in merged) and (a._id not in merged) and
+                    ((a.temporal_distance(o) &lt;= self.temporal_support() or (a.category() in briefmerge and a.temporal_distance(o) &lt; 5*vo.framerate())))):
+                    a.union(o)  # in-place update
+                    merged.add(o.id())
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in merged)
+
+        # Group activity: Must be accompanied by a friend with the same activity detection
+        categories = [&#39;person_embraces_person&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_talks_to_person&#39;, &#39;person_transfers_object&#39;]           
+        dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if a.id() in tofinalize and a.category() in categories}  # precompute
+        srcbox = {k:bb.clone().maxsquare().dilate(1.2) for (k,bb) in dstbox.items()}                            
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a._label in categories and
+                                                                      not any([(af._label == a._label and
+                                                                                af._id != a._id and
+                                                                                af._actorid != a._actorid and 
+                                                                                srcbox[a._id].hasintersection(dstbox[af._id]))
+                                                                               for af in vo.activities().values() if af.during_interval(a._startframe, a._endframe, inclusive=True)])) else a)
+        
+        # Activity group suppression:  Group activities may have at most one activity detection of this type per group in a spatial region surrounding the actor
+        tosuppress = set([&#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_transfers_object&#39;, &#39;person_steals_object&#39;, &#39;person_purchases&#39;, &#39;person_talks_to_person&#39;])
+        suppressed = set([])
+        activitybox = {a.id():vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for a in vo.activities().values() if a.id() in tofinalize and a.category() in tosuppress}
+        activitybox = {k:bb.dilate(1.2).maxsquare() if bb is not None else bb for (k,bb) in activitybox.items()}
+        candidates = [a for a in vo.activities().values() if a.id() in tofinalize]
+        for a in sorted(candidates, key=lambda a: a.confidence(), reverse=True):  # decreasing confidence
+            if a.category() in tosuppress:
+                for o in candidates:  # other activities
+                    if (o._actorid != a._actorid and  # different tracks
+                        o._label == a._label and  # same category
+                        o.confidence() &lt;= a.confidence() and   # lower confidence
+                        o._id not in suppressed and  # not already suppressed
+                        o.during_interval(a.startframe(), a.endframe()) and # overlaps temporally by at least one frame
+                        (activitybox[a._id] is not None and activitybox[o._id] is not None) and   # has valid tracks
+                        activitybox[a._id].hasintersection(activitybox[o._id]) and  # has coarse overlap 
+                        vo.track(a.actorid()).clone().maxsquare().dilate(1.2).segment_maxiou(vo.track(o.actorid()), a.startframe(), a.endframe()) &gt; 0):  # has fine overlap &#34;close by&#34;
+                        suppressed.add(o.id())  # greedy non-maximum suppression of lower confidence activity detection
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in suppressed)
+
+        # Activity duration
+        vo.activitymap(lambda a: a.padto(5) if a.id() in tofinalize and a.category() in [&#39;person_talks_to_person&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_reads_document&#39;, &#39;person_purchases&#39;] else a)   
+        vo.activitymap(lambda a: a.duration(2, centered=False) if a.id() in tofinalize and a.category() in [&#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;] else a)
+        vo.activitymap(lambda a: a.duration(2, centered=True) if a.id() in tofinalize and a.category() in [&#39;person_enters_scene_through_structure&#39;, &#39;person_exits_scene_through_structure&#39;] else a)
+        vo.activitymap(lambda a: a.startframe(0) if a.id() in tofinalize and a.startframe() &lt; 0 else a)
+
+        # Activity confidence
+        if activityconf is not None:
+            vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() &gt;= activityconf)
+    
+        return vo
+            
+    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -&gt; tensor CxNxHxW
@@ -508,126 +656,25 @@ class ActivityTracker(PIP_370k):
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
                         dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={&#39;pip&#39;:category, &#39;logit&#39;:float(conf)}) 
-                                for (j, category_conf_lr_prob_sm) in enumerate(self.lrt(logits, lr_threshold))  # likelihood ratio test
+                                for (j, category_conf_lr_prob_sm) in enumerate(self.lrt(logits))  # likelihood ratio test
                                 for (category, conf, lr, prob, sm) in category_conf_lr_prob_sm   
                                 if ((category in aa) and   # requested activities only
                                     (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
                                     sm&gt;=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
-                        del logits, dets, videotracks  # torch garabage collection                                                
+                        del logits, dets, videotracks  # torch garabage collection
+
+                    if not isinstance(finalized, bool) and k &gt; 0 and k%finalized == 0:
+                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5)  
+                        
                     yield vo
 
         except Exception as e:                
             raise
 
         finally:
-            # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
-            # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed            
-            vo.trackfilter(lambda t: len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.actorid() in vo.tracks())  
-                        
-            # Activity probability:  noun_probability*verb probability
-            nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items()}   # 
-            vo.activitymap(lambda a: a.confidence(nounconf[a.actorid()]*a.confidence()))
-            
-            # Missing objects:  Significantly reduce confidence of complex classes (yuck)
-            vo.activitymap(lambda a: a.confidence(0.01*a.confidence()) if (a.category() in [&#39;person_purchases&#39;]) else a) 
-
-            # Vehicle turns:  High confidence vehicle turns must be a minimum angle
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &lt; (np.pi/16))) else a) 
-
-            # Vehicle turns:  U-turn can only be distinguished from left/right turn at the end of a track by looking at the turn angle
-            vo.activitymap(lambda a: a.category(&#39;vehicle_makes_u_turn&#39;).shortlabel(&#39;u turn&#39;) if ((a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
-
-            # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
-            f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], -1.5)))  
-            
-            # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() in [&#39;vehicle_starts&#39;, &#39;vehicle_stops&#39;] and abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) &lt; 1) else a)
-            vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if a.category() == &#39;vehicle_starts&#39; else (a.padto(5).offset(-int(1.5*vo.framerate())) if a.category() == &#39;vehicle_stops&#39; else a))
-            
-            # Vehicle/person interaction: &#39;vehicle_drops_off_person&#39;/&#39;vehicle_picks_up_person&#39;  must be followed by car driving away/pulling up, must be accompanied by person track start/end
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;vehicle_drops_off_person&#39; and
-                                                                          (not vo.track(a.actorid()).ismoving(a.middleframe(), a.endframe()+10*vo.framerate()) or
-                                                                           not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.startframe(), t.startframe()+1) &gt; 0 for t in vo.tracks().values()])))
-                                                                          else a)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;vehicle_picks_up_person&#39; and
-                                                                          (not vo.track(a.actorid()).ismoving(a.startframe()-10*vo.framerate(), a.middleframe()) or
-                                                                           not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.endframe()-1, t.endframe()) &gt; 0 for t in vo.tracks().values()])))
-                                                                          else a)
-            
-            # Person/Bicycle track: riding must be accompanied by an associated moving bicycle track
-            vo.activityfilter(lambda a: a.category() != &#39;person_rides_bicycle&#39;)
-            bikelist = [vo.add(vipy.activity.Activity(startframe=t.startframe(), endframe=t.endframe(), category=&#39;person_rides_bicycle&#39;, shortlabel=&#39;rides&#39;, confidence=t.confidence(samples=8), framerate=vo.framerate(), actorid=t.id(), attributes={&#39;pip&#39;:&#39;person_rides_bicycle&#39;}))
-                        for (tk,t) in vo.tracks().items() if t.category() == &#39;bicycle&#39; and t.ismoving()]
-
-            # Person/Vehicle track: person/vehicle interaction must be accompanied by an associated stopped vehicle track
-            dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if (a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category()))}  # precompute            
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category())) and not any([t.category() == &#39;vehicle&#39; and 
-                                                                                                                                                                                     t.during(a.startframe()) and
-                                                                                                                                                                                     not t.ismoving(a.startframe(), a.endframe()) and
-                                                                                                                                                                                     t[a.startframe()].hasintersection(dstbox[a._id])
-                                                                                                                                                                                     for t in vo.tracks().values()])) else a)
-            # Vehicle/Person track: vehicle/person interaction must be accompanied by an associated person track
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category().startswith(&#39;vehicle&#39;) and (&#39;person&#39; in a.category())) and not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), a._startframe, a._endframe) &gt; 0 for t in vo.tracks().values()])) else a)
-            
-            # Person track: enter/exit scene cannot be at the image boundary
-            boundary = vo.framebox().dilate(0.9)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;person_enters_scene_through_structure&#39; and vo.track(a.actorid())[max(a.startframe(), vo.track(a.actorid()).startframe())].cover(boundary) &lt; 1) else a)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;person_exits_scene_through_structure&#39; and vo.track(a.actorid())[min(a.endframe(), vo.track(a.actorid()).endframe())].cover(boundary) &lt; 1) else a)
-                        
-            # Activity union:  Temporal gaps less than support should be merged into one activity detection for a single track
-            # Activity union:  &#34;Brief&#34; breaks (&lt;5 seconds) of confident activities should be merged into one activity detection for a single track
-            briefmerge = set([&#39;person_reads_document&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_talks_to_person&#39;, &#39;person_purchases&#39;, &#39;person_steals_object&#39;, &#39;person_talks_on_phone&#39;, &#39;person_texts_on_phone&#39;, &#39;person_rides_bicycle&#39;, &#39;person_carries_heavy_object&#39;, &#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])  
-            merged = set([])
-            mergeable_dets = [a for a in vo.activities().values() if a.confidence() &gt; 0.2]  # only mergeable detections
-            mergeable_dets.sort(key=lambda a: a.startframe())  # in-place
-            for a in mergeable_dets:
-                for o in mergeable_dets:
-                    if ((o._startframe &gt;= a._startframe) and (a._id != o._id) and (o._actorid == a._actorid) and (o._label == a._label) and (o._id not in merged) and (a._id not in merged) and
-                        ((a.temporal_distance(o) &lt;= self.temporal_support() or (a.category() in briefmerge and a.temporal_distance(o) &lt; 5*vo.framerate())))):
-                        a.union(o)  # in-place update
-                        merged.add(o.id())
-            vo.activityfilter(lambda a: a.id() not in merged)
-
-            # Group activity: Must be accompanied by a friend with the same activity detection
-            categories = [&#39;person_embraces_person&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_talks_to_person&#39;, &#39;person_transfers_object&#39;]           
-            dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if a.category() in categories}  # precompute
-            srcbox = {k:bb.clone().maxsquare().dilate(1.2) for (k,bb) in dstbox.items()}                            
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a._label in categories and
-                                                                         not any([(af._label == a._label and
-                                                                                   af._id != a._id and
-                                                                                   af._actorid != a._actorid and 
-                                                                                   srcbox[a._id].hasintersection(dstbox[af._id]))
-                                                                                  for af in vo.activities().values() if af.during_interval(a._startframe, a._endframe, inclusive=True)])) else a)
-            
-            # Activity group suppression:  Group activities may have at most one activity detection of this type per group in a spatial region surrounding the actor
-            tosuppress = set([&#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_transfers_object&#39;, &#39;person_steals_object&#39;, &#39;person_purchases&#39;, &#39;person_talks_to_person&#39;])
-            suppressed = set([])
-            activitybox = {a.id():vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for a in vo.activities().values() if a.category() in tosuppress}
-            activitybox = {k:bb.dilate(1.2).maxsquare() if bb is not None else bb for (k,bb) in activitybox.items()}
-            for a in sorted(vo.activities().values(), key=lambda a: a.confidence(), reverse=True):  # decreasing confidence
-                if a.category() in tosuppress:
-                    for o in vo.activities().values():  # other activities
-                        if (o._actorid != a._actorid and  # different tracks
-                            o._label == a._label and  # same category
-                            o.confidence() &lt;= a.confidence() and   # lower confidence
-                            o._id not in suppressed and  # not already suppressed
-                            o.during_interval(a.startframe(), a.endframe()) and # overlaps temporally by at least one frame
-                            (activitybox[a._id] is not None and activitybox[o._id] is not None) and   # has valid tracks
-                            activitybox[a._id].hasintersection(activitybox[o._id]) and  # has coarse overlap 
-                            vo.track(a.actorid()).clone().maxsquare().dilate(1.2).segment_maxiou(vo.track(o.actorid()), a.startframe(), a.endframe()) &gt; 0):  # has fine overlap &#34;close by&#34;
-                            suppressed.add(o.id())  # greedy non-maximum suppression of lower confidence activity detection
-            vo.activityfilter(lambda a: a.id() not in suppressed)
-
-            # Activity duration
-            vo.activitymap(lambda a: a.padto(5) if a.category() in [&#39;person_talks_to_person&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_reads_document&#39;, &#39;person_purchases&#39;] else a)   
-            vo.activitymap(lambda a: a.duration(2, centered=False) if a.category() in [&#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;] else a)
-            vo.activitymap(lambda a: a.duration(2, centered=True) if a.category() in [&#39;person_enters_scene_through_structure&#39;, &#39;person_exits_scene_through_structure&#39;] else a)
-            vo.activitymap(lambda a: a.startframe(0) if a.startframe() &lt; 0 else a)
-            
-            # Done!
-            vo.setattribute(&#39;_completed&#39;, str(datetime.now()))</code></pre>
+            if not (finalized is False):
+                self.finalize(vo, trackconf=trackconf) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k)</code></pre>
 </details>
 </section>
 <section>
@@ -648,7 +695,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L30-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L30-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityRecognition(object):
     def __init__(self, pretrained=True):
@@ -721,7 +768,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L60-L62" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L60-L62" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activity(self, video, threshold=None):
     (c,s) = zip(*self.label_confidence(video=video, threshold=None))
@@ -736,7 +783,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L80-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L80-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def binary_vector(self, categories):
     y = np.zeros(len(self.classlist())).astype(np.float32)
@@ -753,7 +800,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L36-L37" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L36-L37" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def class_to_index(self, c=None):
     return self._class_to_index if c is None else self._class_to_index[c]</code></pre>
@@ -767,7 +814,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L43-L44" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L43-L44" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order</code></pre>
@@ -781,7 +828,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L49-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L49-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromindex(self, k):
     index_to_class = {v:k for (k,v) in self.class_to_index().items()}
@@ -797,7 +844,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L39-L41" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L39-L41" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def index_to_class(self, index=None):
     d = {v:k for (k,v) in self.class_to_index().items()}
@@ -812,7 +859,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L54-L58" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L54-L58" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_confidence(self, video=None, tensor=None, threshold=None):
     raise
@@ -829,7 +876,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L46-L47" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L46-L47" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_classes(self):
     return len(self.classlist())</code></pre>
@@ -843,7 +890,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L74-L75" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L74-L75" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_support(self):
     return self._num_frames</code></pre>
@@ -857,7 +904,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L64-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L64-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def top1(self, video=None, tensor=None, threshold=None):
     raise
@@ -872,7 +919,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L68-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L68-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, k, video=None, tensor=None, threshold=None):
     raise
@@ -889,7 +936,7 @@ class ActivityTracker(PIP_370k):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L77-L78" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L77-L78" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, training=False):
     raise</code></pre>
@@ -902,13 +949,54 @@ class ActivityTracker(PIP_370k):
 <span>(</span><span>stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>Activity recognition using people in public - 250k stabilized</p></div>
+<div class="desc"><p>Video Activity detection.</p>
+<p>Args (<strong>call</strong>):
+vi [generator of <code>vipy.video.Scene</code>]:
+The input video to be updated in place with detections.
+This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.<strong>call</strong>
+activityiou [float]: The minimum temporal iou for activity assignment
+mirror [bool]:
+If true, encode using the mean of a video encoding and the mirrored video encoding.
+This is slower as it requires 2x GPU forward passes
+minprob [float]: The minimum probability for new activity detection
+trackconf [float]: The minimum object detection confidence for new tracks
+maxdets [int]:
+The maximum number of allowable detections per frame.
+If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best
+avgdets [int]:
+The number of allowable detections per frame if throttled
+buffered [bool]:
+If true, then buffer streams.
+This is useful for activity detection on live streams.
+<br>
+finalized [bool, int]:
+If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames.
+This is useful for streaming activity detection on unbounded inputs. </p>
+<h2 id="returns">Returns</h2>
+<p>The input video is updated in place.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L395-L601" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L395-L648" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">class ActivityTracker(PIP_370k): 
+<pre><code class="python">class ActivityTracker(PIP_370k):
+    &#34;&#34;&#34;Video Activity detection.
+        
+    Args (__call__):
+        vi [generator of `vipy.video.Scene`]:  The input video to be updated in place with detections.  This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__
+        activityiou [float]: The minimum temporal iou for activity assignment
+        mirror [bool]:  If true, encode using the mean of a video encoding and the mirrored video encoding.  This is slower as it requires 2x GPU forward passes
+        minprob [float]: The minimum probability for new activity detection
+        trackconf [float]: The minimum object detection confidence for new tracks
+        maxdets [int]:  The maximum number of allowable detections per frame.  If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best
+        avgdets [int]:  The number of allowable detections per frame if throttled
+        buffered [bool]:  If true, then buffer streams.  This is useful for activity detection on live streams.            
+        finalized [bool, int]:  If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames.  This is useful for streaming activity detection on unbounded inputs. 
+        
+    Returns:
+        The input video is updated in place.
+    
+    &#34;&#34;&#34;    
     def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
         assert modelfile is not None, &#34;Contact &lt;info@visym.com&gt; for access to non-public model files&#34;
 
@@ -950,7 +1038,7 @@ class ActivityTracker(PIP_370k):
             del x  # force garbage collection
             return x_forward
 
-    def lrt(self, x_logits, lrt_threshold):
+    def lrt(self, x_logits, lrt_threshold=None):
         &#34;&#34;&#34;top-k with likelihood ratio test with background null hypothesis&#34;&#34;&#34;
         j_bg_person = self._class_to_index[&#39;person&#39;] if &#39;person&#39; in self._class_to_index else self._class_to_index[&#39;person_walks&#39;]  # FIXME
         j_bg_vehicle = self._class_to_index[&#39;vehicle&#39;] if &#39;vehicle&#39; in self._class_to_index else self._class_to_index[&#39;car_moves&#39;]  # FIXME
@@ -963,7 +1051,138 @@ class ActivityTracker(PIP_370k):
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] &gt;= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
 
-    def __call__(self, vi, topk=1, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, lr_threshold=None, lr_merge_threshold=None, avgdets=70, throttle=True, buffered=True):
+    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+        &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
+        assert isinstance(vo, vipy.video.Scene)
+
+        tofinalize = set([ai for (ai,a) in vo.activities().items() if (endframe is None or a.endframe() &lt;= endframe) and (startframe is None or a.endframe() &gt;= startframe)])
+        tofinalize = tofinalize.union([ti for (ti,t) in vo.tracks().items() if ((endframe is None or t.endframe() &lt;= endframe) and (startframe is None or t.endframe() &gt;= startframe)) or any([ti == vo.activities(id=ai).actorid() for ai in tofinalize])])
+
+        # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
+        # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
+        if trackconf is not None:
+            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+        
+        # Activity probability:  noun_probability*verb probability
+        nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
+        vo.activitymap(lambda a: a.confidence(nounconf[a.actorid()]*a.confidence()) if a.id() in tofinalize else a)
+        
+        # Missing objects:  Significantly reduce confidence of complex classes (yuck)
+        vo.activitymap(lambda a: a.confidence(0.01*a.confidence()) if (a.id() in tofinalize and a.category() in [&#39;person_purchases&#39;]) else a) 
+        
+        # Vehicle turns:  High confidence vehicle turns must be a minimum angle
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                      (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &lt; (np.pi/16))) else a) 
+        
+        # Vehicle turns:  U-turn can only be distinguished from left/right turn at the end of a track by looking at the turn angle
+        vo.activitymap(lambda a: a.category(&#39;vehicle_makes_u_turn&#39;).shortlabel(&#39;u turn&#39;) if (a.id() in tofinalize and
+                                                                                             (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                                             (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
+        
+        # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
+        f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
+        vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], -1.5)) if a.id() in tofinalize else a)
+        
+        # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() in [&#39;vehicle_starts&#39;, &#39;vehicle_stops&#39;] and
+                                                                      abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) &lt; 1) else a)
+        vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_starts&#39;) else a)
+        vo.activitymap(lambda a: a.padto(5).offset(-int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_stops&#39;) else a)
+        
+        # Vehicle/person interaction: &#39;vehicle_drops_off_person&#39;/&#39;vehicle_picks_up_person&#39;  must be followed by car driving away/pulling up, must be accompanied by person track start/end
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() == &#39;vehicle_drops_off_person&#39; and
+                                                                      (not vo.track(a.actorid()).ismoving(a.middleframe(), a.endframe()+10*vo.framerate()) or
+                                                                       not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.startframe(), t.startframe()+1) &gt; 0 for t in vo.tracks().values()]))) else a)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a.category() == &#39;vehicle_picks_up_person&#39; and
+                                                                      (not vo.track(a.actorid()).ismoving(a.startframe()-10*vo.framerate(), a.middleframe()) or
+                                                                       not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.endframe()-1, t.endframe()) &gt; 0 for t in vo.tracks().values()]))) else a)
+        
+        # Person/Bicycle track: riding must be accompanied by an associated moving bicycle track
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.category() != &#39;person_rides_bicycle&#39;)
+        bikelist = [vo.add(vipy.activity.Activity(startframe=t.startframe(), endframe=t.endframe(), category=&#39;person_rides_bicycle&#39;, shortlabel=&#39;rides&#39;, confidence=t.confidence(samples=8), framerate=vo.framerate(), actorid=t.id(), attributes={&#39;pip&#39;:&#39;person_rides_bicycle&#39;}))
+                    for (tk,t) in vo.tracks().items() if (t.id() in tofinalize and t.category() == &#39;bicycle&#39; and t.ismoving())]
+        
+        # Person/Vehicle track: person/vehicle interaction must be accompanied by an associated stopped vehicle track
+        dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if (a.id() in tofinalize and a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category()))}  # precompute            
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      (a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category())) and
+                                                                      not any([t.category() == &#39;vehicle&#39; and 
+                                                                               t.during(a.startframe()) and
+                                                                               not t.ismoving(a.startframe(), a.endframe()) and
+                                                                               t[a.startframe()].hasintersection(dstbox[a._id])
+                                                                               for t in vo.tracks().values()])) else a)
+        
+        # Vehicle/Person track: vehicle/person interaction must be accompanied by an associated person track
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and (a.category().startswith(&#39;vehicle&#39;) and (&#39;person&#39; in a.category())) and not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), a._startframe, a._endframe) &gt; 0 for t in vo.tracks().values()])) else a)
+        
+        # Person track: enter/exit scene cannot be at the image boundary
+        boundary = vo.framebox().dilate(0.9)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_enters_scene_through_structure&#39; and vo.track(a.actorid())[max(a.startframe(), vo.track(a.actorid()).startframe())].cover(boundary) &lt; 1) else a)
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_exits_scene_through_structure&#39; and vo.track(a.actorid())[min(a.endframe(), vo.track(a.actorid()).endframe())].cover(boundary) &lt; 1) else a)
+        
+        # Activity union:  Temporal gaps less than support should be merged into one activity detection for a single track
+        # Activity union:  &#34;Brief&#34; breaks (&lt;5 seconds) of confident activities should be merged into one activity detection for a single track
+        briefmerge = set([&#39;person_reads_document&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_talks_to_person&#39;, &#39;person_purchases&#39;, &#39;person_steals_object&#39;, &#39;person_talks_on_phone&#39;, &#39;person_texts_on_phone&#39;, &#39;person_rides_bicycle&#39;, &#39;person_carries_heavy_object&#39;, &#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])  
+        merged = set([])
+        mergeable_dets = [a for a in vo.activities().values() if a.id() in tofinalize and a.confidence() &gt; 0.2]  # only mergeable detections
+        mergeable_dets.sort(key=lambda a: a.startframe())  # in-place
+        for a in mergeable_dets:
+            for o in mergeable_dets:
+                if ((o._startframe &gt;= a._startframe) and (a._id != o._id) and (o._actorid == a._actorid) and (o._label == a._label) and (o._id not in merged) and (a._id not in merged) and
+                    ((a.temporal_distance(o) &lt;= self.temporal_support() or (a.category() in briefmerge and a.temporal_distance(o) &lt; 5*vo.framerate())))):
+                    a.union(o)  # in-place update
+                    merged.add(o.id())
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in merged)
+
+        # Group activity: Must be accompanied by a friend with the same activity detection
+        categories = [&#39;person_embraces_person&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_talks_to_person&#39;, &#39;person_transfers_object&#39;]           
+        dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if a.id() in tofinalize and a.category() in categories}  # precompute
+        srcbox = {k:bb.clone().maxsquare().dilate(1.2) for (k,bb) in dstbox.items()}                            
+        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                      a._label in categories and
+                                                                      not any([(af._label == a._label and
+                                                                                af._id != a._id and
+                                                                                af._actorid != a._actorid and 
+                                                                                srcbox[a._id].hasintersection(dstbox[af._id]))
+                                                                               for af in vo.activities().values() if af.during_interval(a._startframe, a._endframe, inclusive=True)])) else a)
+        
+        # Activity group suppression:  Group activities may have at most one activity detection of this type per group in a spatial region surrounding the actor
+        tosuppress = set([&#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_transfers_object&#39;, &#39;person_steals_object&#39;, &#39;person_purchases&#39;, &#39;person_talks_to_person&#39;])
+        suppressed = set([])
+        activitybox = {a.id():vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for a in vo.activities().values() if a.id() in tofinalize and a.category() in tosuppress}
+        activitybox = {k:bb.dilate(1.2).maxsquare() if bb is not None else bb for (k,bb) in activitybox.items()}
+        candidates = [a for a in vo.activities().values() if a.id() in tofinalize]
+        for a in sorted(candidates, key=lambda a: a.confidence(), reverse=True):  # decreasing confidence
+            if a.category() in tosuppress:
+                for o in candidates:  # other activities
+                    if (o._actorid != a._actorid and  # different tracks
+                        o._label == a._label and  # same category
+                        o.confidence() &lt;= a.confidence() and   # lower confidence
+                        o._id not in suppressed and  # not already suppressed
+                        o.during_interval(a.startframe(), a.endframe()) and # overlaps temporally by at least one frame
+                        (activitybox[a._id] is not None and activitybox[o._id] is not None) and   # has valid tracks
+                        activitybox[a._id].hasintersection(activitybox[o._id]) and  # has coarse overlap 
+                        vo.track(a.actorid()).clone().maxsquare().dilate(1.2).segment_maxiou(vo.track(o.actorid()), a.startframe(), a.endframe()) &gt; 0):  # has fine overlap &#34;close by&#34;
+                        suppressed.add(o.id())  # greedy non-maximum suppression of lower confidence activity detection
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in suppressed)
+
+        # Activity duration
+        vo.activitymap(lambda a: a.padto(5) if a.id() in tofinalize and a.category() in [&#39;person_talks_to_person&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_reads_document&#39;, &#39;person_purchases&#39;] else a)   
+        vo.activitymap(lambda a: a.duration(2, centered=False) if a.id() in tofinalize and a.category() in [&#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;] else a)
+        vo.activitymap(lambda a: a.duration(2, centered=True) if a.id() in tofinalize and a.category() in [&#39;person_enters_scene_through_structure&#39;, &#39;person_exits_scene_through_structure&#39;] else a)
+        vo.activitymap(lambda a: a.startframe(0) if a.id() in tofinalize and a.startframe() &lt; 0 else a)
+
+        # Activity confidence
+        if activityconf is not None:
+            vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() &gt;= activityconf)
+    
+        return vo
+            
+    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -&gt; tensor CxNxHxW
@@ -995,126 +1214,25 @@ class ActivityTracker(PIP_370k):
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
                         dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={&#39;pip&#39;:category, &#39;logit&#39;:float(conf)}) 
-                                for (j, category_conf_lr_prob_sm) in enumerate(self.lrt(logits, lr_threshold))  # likelihood ratio test
+                                for (j, category_conf_lr_prob_sm) in enumerate(self.lrt(logits))  # likelihood ratio test
                                 for (category, conf, lr, prob, sm) in category_conf_lr_prob_sm   
                                 if ((category in aa) and   # requested activities only
                                     (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
                                     sm&gt;=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
-                        del logits, dets, videotracks  # torch garabage collection                                                
+                        del logits, dets, videotracks  # torch garabage collection
+
+                    if not isinstance(finalized, bool) and k &gt; 0 and k%finalized == 0:
+                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5)  
+                        
                     yield vo
 
         except Exception as e:                
             raise
 
         finally:
-            # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
-            # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed            
-            vo.trackfilter(lambda t: len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.actorid() in vo.tracks())  
-                        
-            # Activity probability:  noun_probability*verb probability
-            nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items()}   # 
-            vo.activitymap(lambda a: a.confidence(nounconf[a.actorid()]*a.confidence()))
-            
-            # Missing objects:  Significantly reduce confidence of complex classes (yuck)
-            vo.activitymap(lambda a: a.confidence(0.01*a.confidence()) if (a.category() in [&#39;person_purchases&#39;]) else a) 
-
-            # Vehicle turns:  High confidence vehicle turns must be a minimum angle
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &lt; (np.pi/16))) else a) 
-
-            # Vehicle turns:  U-turn can only be distinguished from left/right turn at the end of a track by looking at the turn angle
-            vo.activitymap(lambda a: a.category(&#39;vehicle_makes_u_turn&#39;).shortlabel(&#39;u turn&#39;) if ((a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
-
-            # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
-            f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], -1.5)))  
-            
-            # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() in [&#39;vehicle_starts&#39;, &#39;vehicle_stops&#39;] and abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) &lt; 1) else a)
-            vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if a.category() == &#39;vehicle_starts&#39; else (a.padto(5).offset(-int(1.5*vo.framerate())) if a.category() == &#39;vehicle_stops&#39; else a))
-            
-            # Vehicle/person interaction: &#39;vehicle_drops_off_person&#39;/&#39;vehicle_picks_up_person&#39;  must be followed by car driving away/pulling up, must be accompanied by person track start/end
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;vehicle_drops_off_person&#39; and
-                                                                          (not vo.track(a.actorid()).ismoving(a.middleframe(), a.endframe()+10*vo.framerate()) or
-                                                                           not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.startframe(), t.startframe()+1) &gt; 0 for t in vo.tracks().values()])))
-                                                                          else a)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;vehicle_picks_up_person&#39; and
-                                                                          (not vo.track(a.actorid()).ismoving(a.startframe()-10*vo.framerate(), a.middleframe()) or
-                                                                           not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.endframe()-1, t.endframe()) &gt; 0 for t in vo.tracks().values()])))
-                                                                          else a)
-            
-            # Person/Bicycle track: riding must be accompanied by an associated moving bicycle track
-            vo.activityfilter(lambda a: a.category() != &#39;person_rides_bicycle&#39;)
-            bikelist = [vo.add(vipy.activity.Activity(startframe=t.startframe(), endframe=t.endframe(), category=&#39;person_rides_bicycle&#39;, shortlabel=&#39;rides&#39;, confidence=t.confidence(samples=8), framerate=vo.framerate(), actorid=t.id(), attributes={&#39;pip&#39;:&#39;person_rides_bicycle&#39;}))
-                        for (tk,t) in vo.tracks().items() if t.category() == &#39;bicycle&#39; and t.ismoving()]
-
-            # Person/Vehicle track: person/vehicle interaction must be accompanied by an associated stopped vehicle track
-            dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if (a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category()))}  # precompute            
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category())) and not any([t.category() == &#39;vehicle&#39; and 
-                                                                                                                                                                                     t.during(a.startframe()) and
-                                                                                                                                                                                     not t.ismoving(a.startframe(), a.endframe()) and
-                                                                                                                                                                                     t[a.startframe()].hasintersection(dstbox[a._id])
-                                                                                                                                                                                     for t in vo.tracks().values()])) else a)
-            # Vehicle/Person track: vehicle/person interaction must be accompanied by an associated person track
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if ((a.category().startswith(&#39;vehicle&#39;) and (&#39;person&#39; in a.category())) and not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), a._startframe, a._endframe) &gt; 0 for t in vo.tracks().values()])) else a)
-            
-            # Person track: enter/exit scene cannot be at the image boundary
-            boundary = vo.framebox().dilate(0.9)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;person_enters_scene_through_structure&#39; and vo.track(a.actorid())[max(a.startframe(), vo.track(a.actorid()).startframe())].cover(boundary) &lt; 1) else a)
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.category() == &#39;person_exits_scene_through_structure&#39; and vo.track(a.actorid())[min(a.endframe(), vo.track(a.actorid()).endframe())].cover(boundary) &lt; 1) else a)
-                        
-            # Activity union:  Temporal gaps less than support should be merged into one activity detection for a single track
-            # Activity union:  &#34;Brief&#34; breaks (&lt;5 seconds) of confident activities should be merged into one activity detection for a single track
-            briefmerge = set([&#39;person_reads_document&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_talks_to_person&#39;, &#39;person_purchases&#39;, &#39;person_steals_object&#39;, &#39;person_talks_on_phone&#39;, &#39;person_texts_on_phone&#39;, &#39;person_rides_bicycle&#39;, &#39;person_carries_heavy_object&#39;, &#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])  
-            merged = set([])
-            mergeable_dets = [a for a in vo.activities().values() if a.confidence() &gt; 0.2]  # only mergeable detections
-            mergeable_dets.sort(key=lambda a: a.startframe())  # in-place
-            for a in mergeable_dets:
-                for o in mergeable_dets:
-                    if ((o._startframe &gt;= a._startframe) and (a._id != o._id) and (o._actorid == a._actorid) and (o._label == a._label) and (o._id not in merged) and (a._id not in merged) and
-                        ((a.temporal_distance(o) &lt;= self.temporal_support() or (a.category() in briefmerge and a.temporal_distance(o) &lt; 5*vo.framerate())))):
-                        a.union(o)  # in-place update
-                        merged.add(o.id())
-            vo.activityfilter(lambda a: a.id() not in merged)
-
-            # Group activity: Must be accompanied by a friend with the same activity detection
-            categories = [&#39;person_embraces_person&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_talks_to_person&#39;, &#39;person_transfers_object&#39;]           
-            dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if a.category() in categories}  # precompute
-            srcbox = {k:bb.clone().maxsquare().dilate(1.2) for (k,bb) in dstbox.items()}                            
-            vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a._label in categories and
-                                                                         not any([(af._label == a._label and
-                                                                                   af._id != a._id and
-                                                                                   af._actorid != a._actorid and 
-                                                                                   srcbox[a._id].hasintersection(dstbox[af._id]))
-                                                                                  for af in vo.activities().values() if af.during_interval(a._startframe, a._endframe, inclusive=True)])) else a)
-            
-            # Activity group suppression:  Group activities may have at most one activity detection of this type per group in a spatial region surrounding the actor
-            tosuppress = set([&#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_transfers_object&#39;, &#39;person_steals_object&#39;, &#39;person_purchases&#39;, &#39;person_talks_to_person&#39;])
-            suppressed = set([])
-            activitybox = {a.id():vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for a in vo.activities().values() if a.category() in tosuppress}
-            activitybox = {k:bb.dilate(1.2).maxsquare() if bb is not None else bb for (k,bb) in activitybox.items()}
-            for a in sorted(vo.activities().values(), key=lambda a: a.confidence(), reverse=True):  # decreasing confidence
-                if a.category() in tosuppress:
-                    for o in vo.activities().values():  # other activities
-                        if (o._actorid != a._actorid and  # different tracks
-                            o._label == a._label and  # same category
-                            o.confidence() &lt;= a.confidence() and   # lower confidence
-                            o._id not in suppressed and  # not already suppressed
-                            o.during_interval(a.startframe(), a.endframe()) and # overlaps temporally by at least one frame
-                            (activitybox[a._id] is not None and activitybox[o._id] is not None) and   # has valid tracks
-                            activitybox[a._id].hasintersection(activitybox[o._id]) and  # has coarse overlap 
-                            vo.track(a.actorid()).clone().maxsquare().dilate(1.2).segment_maxiou(vo.track(o.actorid()), a.startframe(), a.endframe()) &gt; 0):  # has fine overlap &#34;close by&#34;
-                            suppressed.add(o.id())  # greedy non-maximum suppression of lower confidence activity detection
-            vo.activityfilter(lambda a: a.id() not in suppressed)
-
-            # Activity duration
-            vo.activitymap(lambda a: a.padto(5) if a.category() in [&#39;person_talks_to_person&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_reads_document&#39;, &#39;person_purchases&#39;] else a)   
-            vo.activitymap(lambda a: a.duration(2, centered=False) if a.category() in [&#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;] else a)
-            vo.activitymap(lambda a: a.duration(2, centered=True) if a.category() in [&#39;person_enters_scene_through_structure&#39;, &#39;person_exits_scene_through_structure&#39;] else a)
-            vo.activitymap(lambda a: a.startframe(0) if a.startframe() &lt; 0 else a)
-            
-            # Done!
-            vo.setattribute(&#39;_completed&#39;, str(datetime.now()))</code></pre>
+            if not (finalized is False):
+                self.finalize(vo, trackconf=trackconf) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1145,6 +1263,148 @@ class ActivityTracker(PIP_370k):
 </dl>
 <h3>Methods</h3>
 <dl>
+<dt id="heyvi.recognition.ActivityTracker.finalize"><code class="name flex">
+<span>def <span class="ident">finalize</span></span>(<span>self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>In place filtering of video to finalize</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L467-L596" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+    &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
+    assert isinstance(vo, vipy.video.Scene)
+
+    tofinalize = set([ai for (ai,a) in vo.activities().items() if (endframe is None or a.endframe() &lt;= endframe) and (startframe is None or a.endframe() &gt;= startframe)])
+    tofinalize = tofinalize.union([ti for (ti,t) in vo.tracks().items() if ((endframe is None or t.endframe() &lt;= endframe) and (startframe is None or t.endframe() &gt;= startframe)) or any([ti == vo.activities(id=ai).actorid() for ai in tofinalize])])
+
+    # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
+    # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
+    if trackconf is not None:
+        vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+    
+    # Activity probability:  noun_probability*verb probability
+    nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
+    vo.activitymap(lambda a: a.confidence(nounconf[a.actorid()]*a.confidence()) if a.id() in tofinalize else a)
+    
+    # Missing objects:  Significantly reduce confidence of complex classes (yuck)
+    vo.activitymap(lambda a: a.confidence(0.01*a.confidence()) if (a.id() in tofinalize and a.category() in [&#39;person_purchases&#39;]) else a) 
+    
+    # Vehicle turns:  High confidence vehicle turns must be a minimum angle
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                  (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &lt; (np.pi/16))) else a) 
+    
+    # Vehicle turns:  U-turn can only be distinguished from left/right turn at the end of a track by looking at the turn angle
+    vo.activitymap(lambda a: a.category(&#39;vehicle_makes_u_turn&#39;).shortlabel(&#39;u turn&#39;) if (a.id() in tofinalize and
+                                                                                         (a.category() in [&#39;vehicle_turns_left&#39;, &#39;vehicle_turns_right&#39;]) and
+                                                                                         (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
+    
+    # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
+    f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
+    vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], -1.5)) if a.id() in tofinalize else a)
+    
+    # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  a.category() in [&#39;vehicle_starts&#39;, &#39;vehicle_stops&#39;] and
+                                                                  abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) &lt; 1) else a)
+    vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_starts&#39;) else a)
+    vo.activitymap(lambda a: a.padto(5).offset(-int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == &#39;vehicle_stops&#39;) else a)
+    
+    # Vehicle/person interaction: &#39;vehicle_drops_off_person&#39;/&#39;vehicle_picks_up_person&#39;  must be followed by car driving away/pulling up, must be accompanied by person track start/end
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  a.category() == &#39;vehicle_drops_off_person&#39; and
+                                                                  (not vo.track(a.actorid()).ismoving(a.middleframe(), a.endframe()+10*vo.framerate()) or
+                                                                   not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.startframe(), t.startframe()+1) &gt; 0 for t in vo.tracks().values()]))) else a)
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  a.category() == &#39;vehicle_picks_up_person&#39; and
+                                                                  (not vo.track(a.actorid()).ismoving(a.startframe()-10*vo.framerate(), a.middleframe()) or
+                                                                   not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), t.endframe()-1, t.endframe()) &gt; 0 for t in vo.tracks().values()]))) else a)
+    
+    # Person/Bicycle track: riding must be accompanied by an associated moving bicycle track
+    vo.activityfilter(lambda a: a.id() not in tofinalize or a.category() != &#39;person_rides_bicycle&#39;)
+    bikelist = [vo.add(vipy.activity.Activity(startframe=t.startframe(), endframe=t.endframe(), category=&#39;person_rides_bicycle&#39;, shortlabel=&#39;rides&#39;, confidence=t.confidence(samples=8), framerate=vo.framerate(), actorid=t.id(), attributes={&#39;pip&#39;:&#39;person_rides_bicycle&#39;}))
+                for (tk,t) in vo.tracks().items() if (t.id() in tofinalize and t.category() == &#39;bicycle&#39; and t.ismoving())]
+    
+    # Person/Vehicle track: person/vehicle interaction must be accompanied by an associated stopped vehicle track
+    dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if (a.id() in tofinalize and a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category()))}  # precompute            
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  (a.category().startswith(&#39;person&#39;) and (&#39;vehicle&#39; in a.category() or &#39;trunk&#39; in a.category())) and
+                                                                  not any([t.category() == &#39;vehicle&#39; and 
+                                                                           t.during(a.startframe()) and
+                                                                           not t.ismoving(a.startframe(), a.endframe()) and
+                                                                           t[a.startframe()].hasintersection(dstbox[a._id])
+                                                                           for t in vo.tracks().values()])) else a)
+    
+    # Vehicle/Person track: vehicle/person interaction must be accompanied by an associated person track
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and (a.category().startswith(&#39;vehicle&#39;) and (&#39;person&#39; in a.category())) and not any([t.category() == &#39;person&#39; and t.segment_maxiou(vo.track(a._actorid), a._startframe, a._endframe) &gt; 0 for t in vo.tracks().values()])) else a)
+    
+    # Person track: enter/exit scene cannot be at the image boundary
+    boundary = vo.framebox().dilate(0.9)
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_enters_scene_through_structure&#39; and vo.track(a.actorid())[max(a.startframe(), vo.track(a.actorid()).startframe())].cover(boundary) &lt; 1) else a)
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and a.category() == &#39;person_exits_scene_through_structure&#39; and vo.track(a.actorid())[min(a.endframe(), vo.track(a.actorid()).endframe())].cover(boundary) &lt; 1) else a)
+    
+    # Activity union:  Temporal gaps less than support should be merged into one activity detection for a single track
+    # Activity union:  &#34;Brief&#34; breaks (&lt;5 seconds) of confident activities should be merged into one activity detection for a single track
+    briefmerge = set([&#39;person_reads_document&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_talks_to_person&#39;, &#39;person_purchases&#39;, &#39;person_steals_object&#39;, &#39;person_talks_on_phone&#39;, &#39;person_texts_on_phone&#39;, &#39;person_rides_bicycle&#39;, &#39;person_carries_heavy_object&#39;, &#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])  
+    merged = set([])
+    mergeable_dets = [a for a in vo.activities().values() if a.id() in tofinalize and a.confidence() &gt; 0.2]  # only mergeable detections
+    mergeable_dets.sort(key=lambda a: a.startframe())  # in-place
+    for a in mergeable_dets:
+        for o in mergeable_dets:
+            if ((o._startframe &gt;= a._startframe) and (a._id != o._id) and (o._actorid == a._actorid) and (o._label == a._label) and (o._id not in merged) and (a._id not in merged) and
+                ((a.temporal_distance(o) &lt;= self.temporal_support() or (a.category() in briefmerge and a.temporal_distance(o) &lt; 5*vo.framerate())))):
+                a.union(o)  # in-place update
+                merged.add(o.id())
+    vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in merged)
+
+    # Group activity: Must be accompanied by a friend with the same activity detection
+    categories = [&#39;person_embraces_person&#39;, &#39;hand_interacts_with_person&#39;, &#39;person_talks_to_person&#39;, &#39;person_transfers_object&#39;]           
+    dstbox = {k:vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for (k,a) in vo.activities().items() if a.id() in tofinalize and a.category() in categories}  # precompute
+    srcbox = {k:bb.clone().maxsquare().dilate(1.2) for (k,bb) in dstbox.items()}                            
+    vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
+                                                                  a._label in categories and
+                                                                  not any([(af._label == a._label and
+                                                                            af._id != a._id and
+                                                                            af._actorid != a._actorid and 
+                                                                            srcbox[a._id].hasintersection(dstbox[af._id]))
+                                                                           for af in vo.activities().values() if af.during_interval(a._startframe, a._endframe, inclusive=True)])) else a)
+    
+    # Activity group suppression:  Group activities may have at most one activity detection of this type per group in a spatial region surrounding the actor
+    tosuppress = set([&#39;hand_interacts_with_person&#39;, &#39;person_embraces_person&#39;, &#39;person_transfers_object&#39;, &#39;person_steals_object&#39;, &#39;person_purchases&#39;, &#39;person_talks_to_person&#39;])
+    suppressed = set([])
+    activitybox = {a.id():vo.track(a.actorid()).boundingbox(a.startframe(), a.endframe()) for a in vo.activities().values() if a.id() in tofinalize and a.category() in tosuppress}
+    activitybox = {k:bb.dilate(1.2).maxsquare() if bb is not None else bb for (k,bb) in activitybox.items()}
+    candidates = [a for a in vo.activities().values() if a.id() in tofinalize]
+    for a in sorted(candidates, key=lambda a: a.confidence(), reverse=True):  # decreasing confidence
+        if a.category() in tosuppress:
+            for o in candidates:  # other activities
+                if (o._actorid != a._actorid and  # different tracks
+                    o._label == a._label and  # same category
+                    o.confidence() &lt;= a.confidence() and   # lower confidence
+                    o._id not in suppressed and  # not already suppressed
+                    o.during_interval(a.startframe(), a.endframe()) and # overlaps temporally by at least one frame
+                    (activitybox[a._id] is not None and activitybox[o._id] is not None) and   # has valid tracks
+                    activitybox[a._id].hasintersection(activitybox[o._id]) and  # has coarse overlap 
+                    vo.track(a.actorid()).clone().maxsquare().dilate(1.2).segment_maxiou(vo.track(o.actorid()), a.startframe(), a.endframe()) &gt; 0):  # has fine overlap &#34;close by&#34;
+                    suppressed.add(o.id())  # greedy non-maximum suppression of lower confidence activity detection
+    vo.activityfilter(lambda a: a.id() not in tofinalize or a.id() not in suppressed)
+
+    # Activity duration
+    vo.activitymap(lambda a: a.padto(5) if a.id() in tofinalize and a.category() in [&#39;person_talks_to_person&#39;, &#39;person_interacts_with_laptop&#39;, &#39;person_reads_document&#39;, &#39;person_purchases&#39;] else a)   
+    vo.activitymap(lambda a: a.duration(2, centered=False) if a.id() in tofinalize and a.category() in [&#39;person_opens_vehicle_door&#39;, &#39;person_closes_vehicle_door&#39;] else a)
+    vo.activitymap(lambda a: a.duration(2, centered=True) if a.id() in tofinalize and a.category() in [&#39;person_enters_scene_through_structure&#39;, &#39;person_exits_scene_through_structure&#39;] else a)
+    vo.activitymap(lambda a: a.startframe(0) if a.id() in tofinalize and a.startframe() &lt; 0 else a)
+
+    # Activity confidence
+    if activityconf is not None:
+        vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() &gt;= activityconf)
+
+    return vo</code></pre>
+</details>
+</dd>
 <dt id="heyvi.recognition.ActivityTracker.forward"><code class="name flex">
 <span>def <span class="ident">forward</span></span>(<span>self, x) ‑> Callable[..., Any]</span>
 </code></dt>
@@ -1154,7 +1414,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L421-L435" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L438-L452" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     &#34;&#34;&#34;Overload forward for multi-gpu batch.  Don&#39;t use torch DataParallel!&#34;&#34;&#34;
@@ -1174,16 +1434,16 @@ Don't use torch DataParallel!</p></div>
 </details>
 </dd>
 <dt id="heyvi.recognition.ActivityTracker.lrt"><code class="name flex">
-<span>def <span class="ident">lrt</span></span>(<span>self, x_logits, lrt_threshold)</span>
+<span>def <span class="ident">lrt</span></span>(<span>self, x_logits, lrt_threshold=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>top-k with likelihood ratio test with background null hypothesis</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L437-L447" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L454-L464" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def lrt(self, x_logits, lrt_threshold):
+<pre><code class="python">def lrt(self, x_logits, lrt_threshold=None):
     &#34;&#34;&#34;top-k with likelihood ratio test with background null hypothesis&#34;&#34;&#34;
     j_bg_person = self._class_to_index[&#39;person&#39;] if &#39;person&#39; in self._class_to_index else self._class_to_index[&#39;person_walks&#39;]  # FIXME
     j_bg_vehicle = self._class_to_index[&#39;vehicle&#39;] if &#39;vehicle&#39; in self._class_to_index else self._class_to_index[&#39;car_moves&#39;]  # FIXME
@@ -1204,7 +1464,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L414-L419" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L431-L436" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_stride(self, s=None):
     if s is not None:
@@ -1238,7 +1498,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L88-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L88-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_250k(pl.LightningModule, ActivityRecognition):
     &#34;&#34;&#34;Activity recognition using people in public - 250k stabilized&#34;&#34;&#34;
@@ -1475,7 +1735,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L200-L202" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L200-L202" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_checkpoint(cls, checkpointpath):
@@ -1493,7 +1753,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L123-L125" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L123-L125" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -1508,7 +1768,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L127-L129" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L127-L129" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category_confidence(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -1673,7 +1933,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L146-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L146-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def configure_optimizers(self):
     optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
@@ -1697,7 +1957,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L143-L144" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L143-L144" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.net(x)  # lighting handles device</code></pre>
@@ -1711,7 +1971,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L131-L134" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L131-L134" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -1727,7 +1987,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L136-L140" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L136-L140" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk_probability(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -1744,7 +2004,7 @@ override the :meth:<code>optimizer_step</code> hook.</li>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L277-L282" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L277-L282" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, v=None, training=False, validation=False, show=False, doflip=False):
     &#34;&#34;&#34;Return captured lambda function if v=None, else return tensor&#34;&#34;&#34;    
@@ -1817,7 +2077,7 @@ so it differs from the actual loss returned in train/validation step.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L150-L186" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L150-L186" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def training_step(self, batch, batch_nb, logging=True, valstep=False):
     (x,Y) = batch  
@@ -1901,7 +2161,7 @@ each validation step for that dataloader.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L193-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L193-L197" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_epoch_end(self, outputs):
     avg_loss = torch.stack([x[&#39;val_loss&#39;] for x in outputs]).mean()
@@ -1997,7 +2257,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L188-L191" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L188-L191" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_step(self, batch, batch_nb):
     loss = self.training_step(batch, batch_nb, logging=False, valstep=True)[&#39;loss&#39;]
@@ -2016,7 +2276,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L286-L392" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L286-L392" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
@@ -2166,7 +2426,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/recognition.py#L317-L321" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/recognition.py#L317-L321" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x, k=None):
     &#34;&#34;&#34;Return the top-k classes for a 3 second activity proposal along with framewise ground truth&#34;&#34;&#34;        
@@ -2276,8 +2536,9 @@ setTimeout(() => input.focus(), 100);
 </li>
 <li>
 <h4><code><a title="heyvi.recognition.ActivityTracker" href="#heyvi.recognition.ActivityTracker">ActivityTracker</a></code></h4>
-<ul class="">
+<ul class="two-column">
 <li><code><a title="heyvi.recognition.ActivityTracker.dump_patches" href="#heyvi.recognition.ActivityTracker.dump_patches">dump_patches</a></code></li>
+<li><code><a title="heyvi.recognition.ActivityTracker.finalize" href="#heyvi.recognition.ActivityTracker.finalize">finalize</a></code></li>
 <li><code><a title="heyvi.recognition.ActivityTracker.forward" href="#heyvi.recognition.ActivityTracker.forward">forward</a></code></li>
 <li><code><a title="heyvi.recognition.ActivityTracker.lrt" href="#heyvi.recognition.ActivityTracker.lrt">lrt</a></code></li>
 <li><code><a title="heyvi.recognition.ActivityTracker.temporal_stride" href="#heyvi.recognition.ActivityTracker.temporal_stride">temporal_stride</a></code></li>

@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/sensor.py#L1-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/sensor.py#L1-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
@@ -52,7 +52,24 @@ def rtsp(url=None, fps=30):
     assert url is not None or &#39;VIPY_RTSP_URL&#39; in os.environ
     url = url if url is not None else os.environ[&#39;VIPY_RTSP_URL&#39;]
     assert vipy.util.isRTSPurl(url)
-    return vipy.video.Scene(url=url, framerate=fps)    </code></pre>
+    return vipy.video.Scene(url=url, framerate=fps)    
+
+
+
+def cameralist(online=False):
+    &#34;&#34;&#34;Return all online RTSP cameras set up on the current network.
+
+    This requires setting environment variables:
+
+    VIPY_RTSP_URL_0=&#39;rtsp://user:passwd@ip.addr.0&#39;
+    VIPY_RTSP_URL_1=&#39;rtsp://user:passwd@ip.addr.1&#39;
+    VIPY_RTSP_URL_2=&#39;rtsp://user:passwd@ip.addr.2&#39;
+
+    Args:
+        online [bool]: If True, return only those cameras that are online.  If a camera is offline return None in that camera index.  If false, return all cameras
+    &#34;&#34;&#34;
+    return [rtsp(url=os.environ[k]) if (not online or rtsp(url=os.environ[k]).canload()) else None
+            for k in sorted([k for k in os.environ.keys() if k.startswith(&#39;VIPY_RTSP_URL_&#39;)], key=lambda x: int(x.split(&#39;_&#39;)[-1]))]</code></pre>
 </details>
 </section>
 <section>
@@ -62,6 +79,40 @@ def rtsp(url=None, fps=30):
 <section>
 <h2 class="section-title" id="header-functions">Functions</h2>
 <dl>
+<dt id="heyvi.sensor.cameralist"><code class="name flex">
+<span>def <span class="ident">cameralist</span></span>(<span>online=False)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Return all online RTSP cameras set up on the current network.</p>
+<p>This requires setting environment variables:</p>
+<p>VIPY_RTSP_URL_0='rtsp://user:passwd@ip.addr.0'
+VIPY_RTSP_URL_1='rtsp://user:passwd@ip.addr.1'
+VIPY_RTSP_URL_2='rtsp://user:passwd@ip.addr.2'</p>
+<h2 id="args">Args</h2>
+<p>online [bool]: If True, return only those cameras that are online.
+If a camera is offline return None in that camera index.
+If false, return all cameras</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/sensor.py#L30-L43" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def cameralist(online=False):
+    &#34;&#34;&#34;Return all online RTSP cameras set up on the current network.
+
+    This requires setting environment variables:
+
+    VIPY_RTSP_URL_0=&#39;rtsp://user:passwd@ip.addr.0&#39;
+    VIPY_RTSP_URL_1=&#39;rtsp://user:passwd@ip.addr.1&#39;
+    VIPY_RTSP_URL_2=&#39;rtsp://user:passwd@ip.addr.2&#39;
+
+    Args:
+        online [bool]: If True, return only those cameras that are online.  If a camera is offline return None in that camera index.  If false, return all cameras
+    &#34;&#34;&#34;
+    return [rtsp(url=os.environ[k]) if (not online or rtsp(url=os.environ[k]).canload()) else None
+            for k in sorted([k for k in os.environ.keys() if k.startswith(&#39;VIPY_RTSP_URL_&#39;)], key=lambda x: int(x.split(&#39;_&#39;)[-1]))]</code></pre>
+</details>
+</dd>
 <dt id="heyvi.sensor.rtsp"><code class="name flex">
 <span>def <span class="ident">rtsp</span></span>(<span>url=None, fps=30)</span>
 </code></dt>
@@ -88,7 +139,7 @@ If this environment variable is set, use this as the URL that contains integrate
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/sensor.py#L5-L26" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/sensor.py#L5-L26" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def rtsp(url=None, fps=30):
     &#34;&#34;&#34;Return an RTSP camera.
@@ -183,6 +234,7 @@ setTimeout(() => input.focus(), 100);
 </li>
 <li><h3><a href="#header-functions">Functions</a></h3>
 <ul class="">
+<li><code><a title="heyvi.sensor.cameralist" href="#heyvi.sensor.cameralist">cameralist</a></code></li>
 <li><code><a title="heyvi.sensor.rtsp" href="#heyvi.sensor.rtsp">rtsp</a></code></li>
 </ul>
 </li>

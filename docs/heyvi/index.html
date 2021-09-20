@@ -36,11 +36,15 @@
 <p>The following environment varibles may be set by the client:</p>
 <p>VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'
 <br>
+VIPY_RTSP_URL_0='rtsp://user@password:127.0.0.1'
+<br>
+VIPY_RTSP_URL_1='rtsp://user@password:127.0.0.2'
+<br>
 VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'
 <br>
 VIPY_CACHE='/home/username/.vipy'
 </p>
-<p>For additional environment variables, refer to the vipy package.</p>
+<p>Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in <code>heyvi.sensors.cameralist</code>, and VIPY_RTSP_URL refers to the default RTSP camera in <code><a title="heyvi.sensor.rtsp" href="sensor.html#heyvi.sensor.rtsp">rtsp()</a></code>.</p>
 <h2 id="versioning">Versioning</h2>
 <p>To determine what heyvi version you are running you can use:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; heyvi.__version__
@@ -51,7 +55,7 @@ VIPY_CACHE='/home/username/.vipy'
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e4c983545f2eac38c3c5edf8e0c284d0f248c491/heyvi/__init__.py#L1-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/d5dcbe67dcb0ec84b832d2246c75425f56d9bba7/heyvi/__init__.py#L1-L50" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 
@@ -72,10 +76,12 @@ HEYVI provides:
 The following environment varibles may be set by the client:
 
 VIPY_RTSP_URL=&#39;rtsp://user@password:127.0.0.1&#39;    
+VIPY_RTSP_URL_0=&#39;rtsp://user@password:127.0.0.1&#39;    
+VIPY_RTSP_URL_1=&#39;rtsp://user@password:127.0.0.2&#39;    
 VIPY_YOUTUBE_STREAMKEY=&#39;xxxx-xxxx-xxxx-xxxx-xxxx&#39;    
 VIPY_CACHE=&#39;/home/username/.vipy&#39;    
 
-For additional environment variables, refer to the vipy package.
+Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in `heyvi.sensors.cameralist`, and VIPY_RTSP_URL refers to the default RTSP camera in `heyvi.sensor.rtsp`.
 
 
 ## Versioning

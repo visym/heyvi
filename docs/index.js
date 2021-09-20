@@ -38,7 +38,7 @@ INDEX=[
 {
 "ref":"heyvi",
 "url":0,
-"doc":" \"Hey Vi!\" HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos. HEYVI provides:  Real time activity detection of the [MEVA activity classes](https: mevadata.org)  Real time visual object tracking in long duration videos  Live streaming of annotated videos to youtube live  Visual AI from RTSP cameras  Environment variables The following environment varibles may be set by the client: VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy' For additional environment variables, refer to the vipy package.  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
+"doc":" \"Hey Vi!\" HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos. HEYVI provides:  Real time activity detection of the [MEVA activity classes](https: mevadata.org)  Real time visual object tracking in long duration videos  Live streaming of annotated videos to youtube live  Visual AI from RTSP cameras  Environment variables The following environment varibles may be set by the client: VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_0='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_1='rtsp: user@password:127.0.0.2' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy' Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in  heyvi.sensors.cameralist , and VIPY_RTSP_URL refers to the default RTSP camera in  heyvi.sensor.rtsp .  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
 },
 {
 "ref":"heyvi.sensor",
@@ -49,6 +49,12 @@ INDEX=[
 "ref":"heyvi.sensor.rtsp",
 "url":1,
 "doc":"Return an RTSP camera. >>> v = heyvi.sensor.rtsp() >>> im = v.preview().show().saveas('out.jpg') >>> for im in v: >>> print(im)  live stream >>> print(im.numpy(  of numpy frames Args: url: [str] The URL for the rtsp camera, must start with 'rtsp: ' fps: [float] The framerate of the returned camera, can also be set after Env: VIPY_RTSP_URL: If this environment variable is set, use this as the URL that contains integrated credentials",
+"func":1
+},
+{
+"ref":"heyvi.sensor.cameralist",
+"url":1,
+"doc":"Return all online RTSP cameras set up on the current network. This requires setting environment variables: VIPY_RTSP_URL_0='rtsp: user:passwd@ip.addr.0' VIPY_RTSP_URL_1='rtsp: user:passwd@ip.addr.1' VIPY_RTSP_URL_2='rtsp: user:passwd@ip.addr.2' Args: online [bool]: If True, return only those cameras that are online. If a camera is offline return None in that camera index. If false, return all cameras",
 "func":1
 },
 {
@@ -2169,7 +2175,7 @@ INDEX=[
 {
 "ref":"heyvi.recognition.ActivityTracker",
 "url":31,
-"doc":"Activity recognition using people in public - 250k stabilized"
+"doc":"Video Activity detection. Args (__call__): vi [generator of  vipy.video.Scene ]: The input video to be updated in place with detections. This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__ activityiou [float]: The minimum temporal iou for activity assignment mirror [bool]: If true, encode using the mean of a video encoding and the mirrored video encoding. This is slower as it requires 2x GPU forward passes minprob [float]: The minimum probability for new activity detection trackconf [float]: The minimum object detection confidence for new tracks maxdets [int]: The maximum number of allowable detections per frame. If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best avgdets [int]: The number of allowable detections per frame if throttled buffered [bool]: If true, then buffer streams. This is useful for activity detection on live streams. finalized [bool, int]: If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames. This is useful for streaming activity detection on unbounded inputs. Returns: The input video is updated in place."
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.dump_patches",
@@ -2197,6 +2203,12 @@ INDEX=[
 "ref":"heyvi.recognition.ActivityTracker.lrt",
 "url":31,
 "doc":"top-k with likelihood ratio test with background null hypothesis",
+"func":1
+},
+{
+"ref":"heyvi.recognition.ActivityTracker.finalize",
+"url":31,
+"doc":"In place filtering of video to finalize",
 "func":1
 },
 {
