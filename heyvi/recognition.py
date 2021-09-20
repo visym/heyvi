@@ -393,24 +393,23 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class ActivityTracker(PIP_370k):
-        """Video Activity detection.
+    """Video Activity detection.
         
-        Args (__call__):
-            vi [generator of `vipy.video.Scene`]:  The input video to be updated in place with detections.  This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__
-            activityiou [float]: The minimum temporal iou for activity assignment
-            mirror [bool]:  If true, encode using the mean of a video encoding and the mirrored video encoding.  This is slower as it requires 2x GPU forward passes
-            minprob [float]: The minimum probability for new activity detection
-            trackconf [float]: The minimum object detection confidence for new tracks
-            maxdets [int]:  The maximum number of allowable detections per frame.  If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best
-            avgdets [int]:  The number of allowable detections per frame if throttled
-            buffered [bool]:  If true, then buffer streams.  This is useful for activity detection on live streams.            
-            finalized [bool, int]:  If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames.  This is useful for streaming activity detection on unbounded inputs. 
+    Args (__call__):
+        vi [generator of `vipy.video.Scene`]:  The input video to be updated in place with detections.  This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__
+        activityiou [float]: The minimum temporal iou for activity assignment
+        mirror [bool]:  If true, encode using the mean of a video encoding and the mirrored video encoding.  This is slower as it requires 2x GPU forward passes
+        minprob [float]: The minimum probability for new activity detection
+        trackconf [float]: The minimum object detection confidence for new tracks
+        maxdets [int]:  The maximum number of allowable detections per frame.  If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best
+        avgdets [int]:  The number of allowable detections per frame if throttled
+        buffered [bool]:  If true, then buffer streams.  This is useful for activity detection on live streams.            
+        finalized [bool, int]:  If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames.  This is useful for streaming activity detection on unbounded inputs. 
         
-        Returns:
-            The input video is updated in place.
-
-        """
+    Returns:
+        The input video is updated in place.
     
+    """    
     def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
         assert modelfile is not None, "Contact <info@visym.com> for access to non-public model files"
 
