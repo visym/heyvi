@@ -17,10 +17,12 @@ HEYVI provides:
 The following environment varibles may be set by the client:
 
 VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'    
+VIPY_RTSP_URL_0='rtsp://user@password:127.0.0.1'    
+VIPY_RTSP_URL_1='rtsp://user@password:127.0.0.2'    
 VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'    
 VIPY_CACHE='/home/username/.vipy'    
 
-For additional environment variables, refer to the vipy package.
+Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in `heyvi.sensors.cameralist`, and VIPY_RTSP_URL refers to the default RTSP camera in `heyvi.sensor.rtsp`.
 
 
 ## Versioning
