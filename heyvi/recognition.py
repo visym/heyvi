@@ -496,14 +496,14 @@ class ActivityTracker(PIP_370k):
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5)) if a.id() in tofinalize else a)
-        
-        # Vehicle motion: start and stop must be accompanied by a minimum track acceleration/deceleration
-        vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
-                                                                      a.category() in ['vehicle_starts', 'vehicle_stops'] and
-                                                                      abs(vo.track(a.actorid()).acceleration(a.middleframe(), dt=vo.framerate())) < 1) else a)
-        vo.activitymap(lambda a: a.padto(5).offset(int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == 'vehicle_starts') else a)
-        vo.activitymap(lambda a: a.padto(5).offset(-int(1.5*vo.framerate())) if (a.id() in tofinalize and a.category() == 'vehicle_stops') else a)
-        
+
+        # Complex activities: remove steal/abandon and replace with picks up / puts down
+        vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
+        newlist = [vo.add(vipy.activity.Activity(startframe=a.startframe(), endframe=a.endframe(), category='person_steals_object', shortlabel='steals', confidence=0.5*a.confidence(), framerate=vo.framerate(), actorid=a.actorid(), attributes={'pip':'person_picks_up_object'}))
+                   for a in vo.activitylist() if a.category() == 'person_picks_up_object']
+        newlist = [vo.add(vipy.activity.Activity(startframe=a.startframe(), endframe=a.endframe(), category='person_abandons_package', shortlabel='abandons', confidence=0.5*a.confidence(), framerate=vo.framerate(), actorid=a.actorid(), attributes={'pip':'person_puts_down_object'}))
+                   for a in vo.activitylist() if a.category() == 'person_puts_down_object']
+            
         # Vehicle/person interaction: 'vehicle_drops_off_person'/'vehicle_picks_up_person'  must be followed by car driving away/pulling up, must be accompanied by person track start/end
         vo.activitymap(lambda a: a.confidence(0.1*a.confidence()) if (a.id() in tofinalize and
                                                                       a.category() == 'vehicle_drops_off_person' and

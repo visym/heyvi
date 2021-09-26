@@ -18,9 +18,9 @@ HEYVI provides:
 
 Requirements
 -------------------
-python 3.*
-[ffmpeg](https://ffmpeg.org/download.html) (required for videos)  
-[vipy](https://github.com/visym/vipy), torch, pytorch_lightning (for training)
+python 3.*    
+[ffmpeg](https://ffmpeg.org/download.html) (required for videos)    
+[vipy](https://github.com/visym/vipy), torch, pytorch_lightning (for training)    
 
 
 Installation
