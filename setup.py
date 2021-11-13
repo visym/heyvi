@@ -71,5 +71,6 @@ setup(
     classifiers=[
         "Programming Language :: Python :: 3",
         "Operating System :: OS Independent",
-    ]
+    ],
+    include_package_data=True   # defined in MANIFEST.in
 )
