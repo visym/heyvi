@@ -508,12 +508,17 @@ class ActivityTracker(PIP_370k):
         j_bg_vehicle = self._class_to_index['vehicle'] if 'vehicle' in self._class_to_index else self._class_to_index['car_moves']  # FIXME
 
         yh = x_logits.detach().cpu().numpy()
-        yh_softmax = F.softmax(x_logits.detach().cpu(), dim=1)
+        yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
         p_null = np.maximum(yh[:, j_bg_person], yh[:, j_bg_vehicle]).reshape(yh.shape[0], 1)
         lr = yh - p_null   # ~= log likelihood ratio
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] >= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
+    def softmax(self, x_logits):
+        """Return a list of lists [(class_label, float(softmax), float(logit) ... ] for all classes and batches"""
+        yh = x_logits.detach().cpu().numpy()        
+        yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
+        return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
 
     def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
         """In place filtering of video to finalize"""
@@ -677,9 +682,9 @@ class ActivityTracker(PIP_370k):
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
-                        dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(conf)}) 
-                                for (j, category_conf_lr_prob_sm) in enumerate(self.lrt(logits))  # likelihood ratio test
-                                for (category, conf, lr, prob, sm) in category_conf_lr_prob_sm   
+                        dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
+                                for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
+                                for (category, sm, logit) in category_sm_logit
                                 if ((category in aa) and   # requested activities only
                                     (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
                                     sm>=minprob)]   # minimum probability for new activity detection
