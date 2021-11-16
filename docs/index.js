@@ -2342,6 +2342,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"heyvi.recognition.ActivityTracker.softmax",
+"url":29,
+"doc":"Return a list of lists [(class_label, float(softmax), float(logit)  . ] for all classes and batches",
+"func":1
+},
+{
 "ref":"heyvi.recognition.ActivityTracker.finalize",
 "url":29,
 "doc":"In place filtering of video to finalize",
@@ -2408,6 +2414,12 @@ INDEX=[
 "ref":"heyvi.recognition.ActivityTrackerCap.lrt",
 "url":29,
 "doc":"top-k with likelihood ratio test with background null hypothesis",
+"func":1
+},
+{
+"ref":"heyvi.recognition.ActivityTrackerCap.softmax",
+"url":29,
+"doc":"Return a list of lists [(class_label, float(softmax), float(logit)  . ] for all classes and batches",
 "func":1
 },
 {
