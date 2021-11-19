@@ -1,4 +1,4 @@
-# Installation of optional faster packages (Ubuntu 20.04)
+# Installation of optional faster packages (Ubuntu 20.04) for ActEV'21
 
 # System prep
 sudo apt-get install ffmpeg -y

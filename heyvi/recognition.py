@@ -88,7 +88,7 @@ class ActivityRecognition(object):
 class PIP_250k(pl.LightningModule, ActivityRecognition):
     """Activity recognition using people in public - 250k stabilized"""
     
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, bce=False):
 
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
@@ -103,6 +103,9 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._mlfl = mlfl
         self._mlbl = mlbl
 
+        assert bce == False or (bce == True and self._mlfl == True)        
+        self._bce = bce
+        
         if deterministic:
             np.random.seed(42)
 
@@ -167,17 +170,24 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                     loss += float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
                 elif self._mlfl:
                     # Pick all labels normalized, with multi-label focal loss
-                    loss += torch.min(torch.tensor(1.0, device=y_hat.device), ((w-yhs[self._class_to_index[y]])/w)**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)  
+                    loss += torch.min(torch.tensor(1.0, device=y_hat.device), ((w-yhs[self._class_to_index[y]])/w)**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
+
+                    # With binary cross entropy (for per-class calibration)
+                    if self._bce:
+                        loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
+                    
                 elif self._mlbl:
                     # Pick all labels normalized with multi-label background loss
-                    j_bg_person = self._class_to_index['person'] if 'person' in self._class_to_index else self._class_to_index['person_walks']  # FIXME: does not generalize
-                    j_bg_vehicle = self._class_to_index['vehicle'] if 'vehicle' in self._class_to_index else self._class_to_index['car_moves']  # FIXME: does not generalize
-                    j = j_bg_person if (y.startswith('person') or y.startswith('hand')) else j_bg_vehicle
-                    loss += ((1-torch.sqrt(yhs[j]*yhs[self._class_to_index[y]]))**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)  
+                    #j_bg_person = self._class_to_index['person'] if 'person' in self._class_to_index else self._class_to_index['person_walks']  # FIXME: does not generalize
+                    #j_bg_vehicle = self._class_to_index['vehicle'] if 'vehicle' in self._class_to_index else self._class_to_index['car_moves']  # FIXME: does not generalize
+                    #j = j_bg_person if (y.startswith('person') or y.startswith('hand')) else j_bg_vehicle
+                    #loss += ((1-torch.sqrt(yhs[j]*yhs[self._class_to_index[y]]))**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
+                    raise ('Deprecated')                    
                 else:
                     # Pick all labels normalized (https://papers.nips.cc/paper/2019/file/da647c549dde572c2c5edc4f5bef039c-Paper.pdf
                     loss += float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
 
+                
             n_valid += 1
         loss = loss / float(max(1, n_valid))  # batch reduction: mean
 
@@ -285,7 +295,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
 class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, bce=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -295,6 +305,9 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
+
+        assert bce == False or (bce == True and self._mlfl == True)                
+        self._bce = bce        
         if deterministic:
             np.random.seed(42)
         
@@ -385,7 +398,10 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
             return t
 
     def totensor(self, v=None, training=False, validation=False, show=False, doflip=False, asjson=False):
-        """Return captured lambda function if v=None, else return tensor"""    
+        """Return captured lambda function if v=None, else return tensor"""
+
+        raise  # test that there are no copies needed
+        
         assert v is None or isinstance(v, vipy.video.Scene), "Invalid input"
         f = (lambda v, num_frames=self._num_frames, input_size=self._input_size, mean=self._mean, std=self._std, training=training, validation=validation, show=show, classname=self.__class__.__name__:
              PIP_370k._totensor(v, training, validation, input_size, num_frames, mean, std, noflip=['car_turns_left', 'car_turns_right', 'vehicle_turns_left', 'vehicle_turns_right', 'motorcycle_turns_left', 'motorcycle_turns_right'], show=show, doflip=doflip, asjson=asjson, classname=classname))
@@ -393,7 +409,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=True, pretrained=None, mlbl=None, mlfl=None):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -403,6 +419,9 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = True
         self._mlbl = False
+        assert bce == False or (bce == True and self._mlfl == True)                        
+        self._bce = bce
+        
         if deterministic:
             np.random.seed(42)
         
@@ -552,7 +571,7 @@ class ActivityTracker(PIP_370k):
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5)) if a.id() in tofinalize else a)
-
+        
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
         newlist = [vo.add(vipy.activity.Activity(startframe=a.startframe(), endframe=a.endframe(), category='person_steals_object', shortlabel='steals', confidence=0.5*a.confidence(), framerate=vo.framerate(), actorid=a.actorid(), attributes={'pip':'person_picks_up_object'}))

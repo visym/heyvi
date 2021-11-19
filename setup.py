@@ -59,6 +59,7 @@ setup(
     download_url='https://github.com/visym/heyvi/archive/%s.tar.gz' % version,
     install_requires=[
         "vipy",
+        "pycollector",
         "torch","torchvision",
         "pyyaml",  # legacy for models
         "pytorch_lightning",  # training
