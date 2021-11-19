@@ -102,8 +102,6 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-
-        assert bce == False or (bce == True and self._mlfl == True)        
         self._bce = bce
         
         if deterministic:
@@ -171,10 +169,6 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                 elif self._mlfl:
                     # Pick all labels normalized, with multi-label focal loss
                     loss += torch.min(torch.tensor(1.0, device=y_hat.device), ((w-yhs[self._class_to_index[y]])/w)**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
-
-                    # With binary cross entropy (for per-class calibration)
-                    if self._bce:
-                        loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
                     
                 elif self._mlbl:
                     # Pick all labels normalized with multi-label background loss
@@ -187,6 +181,9 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                     # Pick all labels normalized (https://papers.nips.cc/paper/2019/file/da647c549dde572c2c5edc4f5bef039c-Paper.pdf
                     loss += float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
 
+                if self._bce:
+                    # Binary cross entropy for per-class calibration
+                    loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)                    
                 
             n_valid += 1
         loss = loss / float(max(1, n_valid))  # batch reduction: mean
@@ -305,8 +302,6 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-
-        assert bce == False or (bce == True and self._mlfl == True)                
         self._bce = bce        
         if deterministic:
             np.random.seed(42)
@@ -419,7 +414,6 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = True
         self._mlbl = False
-        assert bce == False or (bce == True and self._mlfl == True)                        
         self._bce = bce
         
         if deterministic:
