@@ -183,8 +183,8 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
                 if self._bce:
                     # Binary cross entropy for per-class calibration
-                    loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)                    
-                
+                    loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), F.one_hot(torch.tensor([self._class_to_index[y]], device=y_hat.device), num_classes=len(C)).type(yh.type()), weight=C)
+
             n_valid += 1
         loss = loss / float(max(1, n_valid))  # batch reduction: mean
 
@@ -241,7 +241,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         assert isinstance(v, vipy.video.Scene), "Invalid input"
         
         try:
-            v = v.download() if (not v.hasfilename() and v.hasurl()) else v  # fetch it if necessary, but do not do this during training!        
+            v = v.download() if (not v.isloaded() and not v.hasfilename() and v.hasurl()) else v  # fetch it if necessary, but do not do this during training!        
             if training or validation:
                 random.seed()  # force randomness after fork() 
                 (ai,aj) = (v.primary_activity().startframe(), v.primary_activity().endframe())  # activity (start,end)
@@ -333,8 +333,8 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         assert isinstance(v, vipy.video.Scene), "Invalid input"
         
         try:
-            v = v.download() if (v.hasurl() and not v.hasfilename()) else v  # fetch it if necessary, but do not do this during training!        
-            vc = v.clone()
+            v = v.download() if (not v.isloaded() and v.hasurl() and not v.hasfilename()) else v  # fetch it if necessary, but do not do this during training!        
+            vc = v.clone()  # this may no longer be necessary since stream iterators make threaded copies of the underlying frames
             if training or validation:
                 random.seed()  # force randomness after fork() 
                 (clipstart, clipend) = vc.cliprange()  # clip (start, end) relative to video 
@@ -349,7 +349,6 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
                 # - turning activities may be outside the frame (filter these)
                 # - turning activities may turn into the stabilized black area.  Is this avoidaable?
                 # - all of the training activities should be centered on the activity.  See if not.
-                # - 
                 
                 if (clipend - clipstart) > (num_frames + stride_jitter):
                     a = vc.primary_activity().clone().padto(num_frames/float(vc.framerate()))  # for context only, may be past end of clip now!
@@ -394,9 +393,6 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
     def totensor(self, v=None, training=False, validation=False, show=False, doflip=False, asjson=False):
         """Return captured lambda function if v=None, else return tensor"""
-
-        raise  # test that there are no copies needed
-        
         assert v is None or isinstance(v, vipy.video.Scene), "Invalid input"
         f = (lambda v, num_frames=self._num_frames, input_size=self._input_size, mean=self._mean, std=self._std, training=training, validation=validation, show=show, classname=self.__class__.__name__:
              PIP_370k._totensor(v, training, validation, input_size, num_frames, mean, std, noflip=['car_turns_left', 'car_turns_right', 'vehicle_turns_left', 'vehicle_turns_right', 'motorcycle_turns_left', 'motorcycle_turns_right'], show=show, doflip=doflip, asjson=asjson, classname=classname))
