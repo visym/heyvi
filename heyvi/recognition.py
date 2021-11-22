@@ -400,7 +400,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -560,7 +560,7 @@ class ActivityTracker(PIP_370k):
         
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-        vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5)) if a.id() in tofinalize else a)
+        vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5 if not self._bce else 0)) if a.id() in tofinalize else a)
         
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
