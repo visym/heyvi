@@ -337,13 +337,14 @@ class VideoTracker(ObjectDetector):
 
 
 class FaceTracker(FaceDetector):
-    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05):
-        (f) = (super().__call__)
+    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05, rescore=None):
+        (f, f_rescore) = (super().__call__, rescore if (rescore is not None and callable(rescore)) else (lambda im,k: im))
         assert isinstance(v, vipy.video.Video), "Invalid input"
-        vc = v.clone().clear()  
+        vc = v.clone()  
         for (k, vb) in enumerate(vc.stream().batch(self.batchsize())):
             for (j, im) in enumerate([f(im) for im in vb.framelist()]):
-                yield vc.assign(k*self.batchsize()+j, im.clone().objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
+                frameindex = k*self.batchsize()+j
+                yield vc.assign(frameindex, f_rescore(im.clone(), frameindex).objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
 
     def track(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False):
         """Batch tracking"""
@@ -354,7 +355,24 @@ class FaceTracker(FaceDetector):
     
     
 class MultiscaleVideoTracker(MultiscaleObjectDetector):
-    """MultiscaleVideoTracker() class"""
+    """MultiscaleVideoTracker() class
+
+    Args:
+        minconf [float]: The minimum confidence of an object detection to be considered for tracking
+        miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment
+        maxhistory [int]:  The maximum frame history lookback for assignment of a detection with a broken track
+        smoothing [str]:  Unused
+        objects [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
+        trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track
+        verbose [bool]:  Logging verbosity
+        gpu [list]: List of GPU indexes to use
+        batchsize [int]:  The GPU batchsize
+        weightfile [str]: The modelfile for the object detector
+        overlapfrac [int]: FIXME, this is a legacy parameter
+        detbatchsize [int]:  The detection batchsize per image
+        gate [int]:  The maximum distance in pixels around a detection to search for candidate tracks
+
+    """
 
 
     def __init__(self, minconf=0.05, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.2, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=6, detbatchsize=None, gate=64):
@@ -371,18 +389,24 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         self._detbatchsize = detbatchsize if detbatchsize is not None else self.batchsize()
         self._gate = gate
 
-    def _track(self, vi, stride=1, continuous=False, buffered=True):
+    def _track(self, vi, stride=1, continuous=False, buffered=True, rescore=None):
         """Yield vipy.video.Scene(), an incremental tracked result for each frame.
+        
+            Args:
+                rescore [callable]: Takes in a single frame with objects and a frame index, and rescores confidences.  Useful for rescoring detections prior to tracking using prior or out-of-band information.  
         """
         assert isinstance(vi, vipy.video.Video), "Invalid input"
+        assert rescore is None or callable(rescore), "Invalid input"        
 
         (det, n, k) = (super().__call__, self._mindim, 0)
+        rescore = (lambda x,k: x) if rescore is None else rescore
         for (k,vb) in enumerate(vi.stream(buffered=buffered).batch(self._detbatchsize)):
             framelist = vb.framelist()
             for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
                 for i in range(j, j+stride):                    
                     if i < len(framelist):
-                        yield (vi.assign(frame=k*self._detbatchsize+i, dets=im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
+                        frameindex = k*self._detbatchsize+i
+                        yield (vi.assign(frame=frameindex, dets=rescore(im, frameindex).objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
                             
     def __call__(self, vi, stride=1, continuous=False, buffered=True):
         return self._track(vi, stride, continuous, buffered=buffered)
@@ -398,200 +422,78 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         return vi
         
 
+class WeakAnnotationTracker(MultiscaleVideoTracker):
+    """heyvi.detection.WeakAnnotationTracker()
 
-class Proposal(ObjectDetector):
-    def __call__(self, v, conf=1E-2, iou=0.8):
-        return super().__call__(v, conf, iou)
+    Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking.
     
-    
-class VideoProposal(Proposal):
-    """heyvi.detection.VideoProposal() class.
-    
-       Track-based object proposals in video.
+    Approach:
+        - THe input video should have weak tracks provided by live annotators with class names that intersect `heyvi.detection.MultiscaleVideoTracker`.
+        - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording.  
+        - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.  
+        - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.
+        - The tracker compbines these rescored detections as in the VideoTracker.
+        - When done, each track is assigned to a proposal. 
+
+    Usage:
+
+    >>> T = heyvi.detection.WeakAnnotationTracker()
+    >>> v = vipy.video.Scene(...)
+    >>> vt = T.track(v)
+    >>> vm = vt.combine(v.trackmap(lambda t: t.category('weak annotation')))
+
+        - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
+        - All track and activities IDs are mapped appropriately from the input video.  
+        - The combined video vm has both the weak annotation and the refined tracks.
+
     """
-    def allowable_objects(self):
-        return ['person', 'vehicle', 'car', 'motorcycle', 'object', 'bicycle', 'motorbike', 'truck']
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=64):
+        # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
+        super().__init__(minconf=minconf, miniou=miniou, maxhistory=maxhistory, objects=None, trackconf=trackconf, verbose=verbose, gpu=gpu, batchsize=batchsize, weightfile=weightfile, overlapfrac=overlapfrac, detbatchsize=detbatchsize, gate=gate)
 
-    def isallowable(self, v):
-        assert isinstance(v, vipy.video.Video), "Invalid input - must be vipy.video.Video not '%s'" % (str(type(v)))
-        return all([c.lower() in self.allowable_objects() for c in v.objectlabels()]) # for now
+    def _track(self, vi, stride=1, continuous=False, buffered=True):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super()._track(vi, stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
-    def __call__(self, v, conf=1E-2, iou=0.8, dt=1, target=None, activitybox=False, dilate=4.0, dilate_height=None, dilate_width=None):
-        assert isinstance(v, vipy.video.Video), "Invalid input - must be vipy.video.Video not '%s'" % (str(type(v)))
+    def track(self, vi, verbose=False):
+        self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) > 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  
+            
 
-        # Optional target class
-        d_target_to_index = {'person':[self._cls2index['person']],
-                             'bicycle':[self._cls2index['bicycle']],
-                             'vehicle':[self._cls2index['car'], self._cls2index['motorbike'], self._cls2index['truck']], 
-                             'car':[self._cls2index['car'], self._cls2index['truck']],
-                             'motorcycle':[self._cls2index['motorbike']],
-                             'object':[self._cls2index[k] for k in ['backpack', 'handbag', 'suitcase', 'frisbee', 'sports ball', 'bottle', 'cup', 'bowl', 'laptop', 'book']]}
-        d_index_to_target = {i:k for (k,v) in d_target_to_index.items() for i in v}
-        assert all([k in self.allowable_objects() for k in d_target_to_index.keys()])        
-        assert target is None or (isinstance(target, list) and all([t in d_target_to_index.keys() for t in target]))
-        f_max_target_confidence = lambda d: (max([d[5+k] for t in target for k in d_target_to_index[t]]) if target is not None else max(d[5:]))
-        f_max_target_category = lambda d: (sorted([(d[5+k], t) for t in target for k in d_target_to_index[t]], key=lambda x: x[0])[-1][1] if target is not None else None)
-        
-        # Source video foveation: dilated crop of the activity box and resize (this transformation must be reversed)
-        vc = v.clone(flushforward=True)  # to avoid memory leaks
-        (dilate_height, dilate_width) = (dilate if dilate_height is None else dilate_height, dilate if dilate_width is None else dilate_width)
-        bb = vc.activitybox().dilate_height(dilate_height).dilate_width(dilate_width).imclipshape(vc.width(), vc.height()) if activitybox else vipy.geometry.imagebox(vc.shape())
-        scale = max(bb.shape()) / float(self._mindim)  # for reversal, input is maxsquare() resized to _mindim
+class WeakAnnotationFaceTracker(FaceTracker):
+    """See `heyvi.detection.WeakAnnotationTracker`"""
+    def __call__(self, vi, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, smoothing=None):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super().__call__(vi, minconf=minconf, miniou=miniou, maxhistory=maxhistory, smoothing=None, trackconf=trackconf, rescore=f_rescorer)
 
-        # Batched proposals on transformed video (preloads source and transformed videos, high mem requirement)
-        ims = []
-        img = vc.numpy()[::dt]  # source video, triggers load
-        tensor = vc.flush().crop(bb, zeropad=False).maxsquare().mindim(self._mindim).torch()[::dt]  # transformed video, NxCxHxW, re-triggers load due to crop()
+    def track(self, vi, verbose=False):        
+        assert isinstance(vi, vipy.video.Scene)
+        if not any([t.category().lower() == 'face' for t in vi.tracklist()]):
+            warnings.warn('No face proposals')
+            return vi.clone()
 
-        for i in range(0, len(tensor), self.batchsize()):
-            with torch.no_grad():
-                t = tensor[i:i+self.batchsize()]
-                todevice = [b.to(d, non_blocking=True) for (b,d) in zip(t.split(self._batchsize) , self._devices)]  # async?
-                fromdevice = [m(b)[0] for (m,b) in zip(self._models, todevice)]     # detection!
-                dets = [torch.squeeze(t, dim=0).cpu().detach().numpy() for d in fromdevice for t in torch.split(d, 1, 0)]   # unpack batch to list of detections per imag
-
-            for (j, det) in enumerate(dets):
-                # Objects in transformed video
-                objs = [vipy.object.Detection(xcentroid=float(d[0]), 
-                                              ycentroid=float(d[1]), 
-                                              width=float(d[2]), 
-                                              height=float(d[3]), 
-                                              confidence=(float(d[4]) + f_max_target_confidence(d)),
-                                              category=('%1.2f' % float(d[4])) if target is None else f_max_target_category(d))
-                        for d in det
-                        if (float(d[4]) > conf) and (f_max_target_confidence(d) > conf)]
-        
-                # Objects in source video
-                objs = [obj.rescale(scale).translate(bb.xmin(), bb.ymin()) for obj in objs]
-                ims.append( vipy.image.Scene(array=img[i+j], objects=objs).nms(conf, iou) )        
-        return ims
-
-
-class FaceProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 and all([t.category().lower() in ['face'] for t in vp.tracklist()])
-        assert len(vt.tracklist()) >= 0 and all([t.category().lower() in ['face'] for t in vt.tracklist()])
-
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s > spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():            
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-                
-        return vc.trackfilter(lambda t: t.id() not in suppressed)
-
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) > 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best face track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  
     
-class TrackProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 
-        assert len(vt.tracklist()) >= 0 and all([t.category().lower() in vp.objects(casesensitive=False) for t in vt.tracklist()])
-        assert vp.framerate() == vt.framerate()
-        
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s > spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-
-        vc.activitymap(lambda a: a.actorid(sorted([(t.id(), a.temporal_iou(t)) for t in vc.tracklist()], key=lambda x: x[1])[-1][0]))  # actor for each activity is track with best overlap
-        return vc.trackfilter(lambda t: t.id() not in suppressed)
-    
-        
-class VideoProposalRefinement(VideoProposal):
-    """heyvi.detection.VideoProposalRefinement() class.
-    
-       Track-based object proposal refinement of a weakly supervised loose object box from a human annotator.
-    """
-    
-    def __call__(self, v, proposalconf=5E-2, proposaliou=0.8, miniou=0.2, dt=1, meanfilter=15, mincover=0.8, shapeiou=0.7, smoothing='spline', splinefactor=None, strict=True, byclass=True, dilate_height=None, dilate_width=None, refinedclass=None, pdist=False, minconf=1E-2):
-        """Replace proposal in v by best (maximum overlap and confidence) object proposal in vc.  If no proposal exists, delete the proposal."""
-        assert isinstance(v, vipy.video.Scene), "Invalid input - must be vipy.video.Scene not '%s'" % (str(type(v)))
-        assert not (byclass is False and refinedclass is not None), "Invalid input"
-        
-        if not self.isallowable(v):
-            warnings.warn("Invalid object labels '%s' for proposal, must be only one target object label and must be in '%s' - returning original video" % (str(v.objectlabels()), str(self.allowable_objects())))
-            return v.clone().setattribute('unrefined')
-        target = None if not byclass else [c.lower() for c in v.objectlabels()] if refinedclass is None else [refinedclass.lower()]  # classes for proposals
-        vp = super().__call__(v, proposalconf, proposaliou, dt=dt, activitybox=True, dilate_height=dilate_height, dilate_width=dilate_width, target=target)  # subsampled proposals
-        vc = v.clone(rekey=True, flushforward=True, flushbackward=True).trackfilter(lambda t: len(t) > dt)
-        for (ti, t) in vc.tracks().items():
-            if len(t) <= 1:
-                continue  # no human annotation, skip
-
-            t.resample(dt=dt)  # interpolated keyframes for source proposal
-            bbprev = None  # last box assignment
-            s = shapeiou  # shape assignment threshold
-            for (f, bb) in zip(t.clone().keyframes(), t.clone().keyboxes()):  # clone because vc is being modified in-loop
-                fs = int(f // dt)  # subsampled frame index, guaranteed incremental [0,1,2,...] by resample()
-                if fs>=0 and fs<=len(vp):  
-                    # Assignment: maximum (overlap with previous box + same shape as previous box + overlap with human box) * (objectness confidence + class confidence)
-                    # Assignment constraints: (new box must not be too small relative to collector box) and (new box must be mostly contained within the collector box) and (new box must mostly overlap previous box) 
-                    assignment = sorted([(bbp, (((bbp.shapeiou(bbprev) + bbp.iou(bbprev)) if bbprev is not None else 1.0) + (bb.iou(bbp) if not pdist else bb.pdist(bbp)))*bbp.confidence())
-                                         for bbp in vp[min(fs, len(vp)-1)].objects() 
-                                         if (bb.iou(bbp)>=miniou and   # refinement overlaps proposal (proposal is loose)
-                                             bbp.cover(bb)>=mincover and  # refinement is covered by proposal (proposal is loose, refinement is inside)
-                                             (bbprev is None or bbprev.shapeiou(bbp)>s) and  # refinement has similar shape over time
-                                             (byclass is False or (refinedclass is None and (bbp.category().lower() == bb.category().lower())) or (refinedclass is not None and bbp.category().lower()==refinedclass.lower()))  # refine by target object only
-                                         )], key=lambda x: x[1])
-
-                    (bbp, iou) = assignment[-1] if len(assignment)>0 else (None, None)  # best assignment                    
-                    if iou is not None and iou > minconf:
-                        newcategory = t.category() if refinedclass is None else refinedclass
-                        vc.tracks()[ti].category(newcategory).replace(f, bbp.clone().category(newcategory))
-                        bbprev = bbp.clone() # update last assignment
-                        s = shapeiou
-                    else:
-                        if strict:
-                            vc.tracks()[ti].delete(f)  # Delete proposal that has no object proposal, otherwise use source proposal for interpolation
-                        s = max(0, s-(0.01*dt))  # gate increase (shape assignment threshold decrease) for shape deformation
-
-        # Remove empty tracks:
-        # if a track does not have an assignment for the last (or first) source proposal, then it will be truncated here
-        vc = vc.trackfilter(lambda t: len(t)>dt)    # may be empty
-
-        # Proposal smoothing
-        if not vc.hastracks():
-            warnings.warn('VideoProposalRefinement returned no tracks')
-            return vc.setattribute('unrefined')
-        elif smoothing == 'mean':
-            # Mean track smoothing: mean shape smoothing with mean coordinate smoothing with very small support for unstabilized video
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).smooth(3))
-        elif smoothing == 'spline':
-            # Cubic spline track smoothing with mean shape smoothing 
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).spline(smoothingfactor=splinefactor, strict=False))
-        elif smoothing is None:
-            return vc
-        else:
-            raise ValueError('Unknown smoothing "%s"' % str(smoothing))
-
 
 class ActorAssociation(MultiscaleVideoTracker):
     """heyvi.detection.VideoAssociation() class
        
        Select the best object track of the target class associated with the primary actor class by gated spatial IOU and distance.
        Add the best object track to the scene and associate with all activities performed by the primary actor.
+
+    .. warning:: This is scheduled for deprecation, as the gating is unreliable.  This should be replaced by the WeakAnnotationTracker for a target class. 
     """
 
     @staticmethod
@@ -637,10 +539,3 @@ class ActorAssociation(MultiscaleVideoTracker):
         return vc.framerate(v.framerate()) if vc.framerate() != v.framerate() else vc   # upsample
 
     
-def _collectorproposal_vs_objectproposal(v, dt=1, miniou=0.2, smoothing='spline'):
-    """Return demo video that compares the human collector annotated proposal vs. the ML annotated proposal for a vipy.video.Scene()"""
-    assert isinstance(v, vipy.video.Scene)
-    v_human = v.clone().trackmap(lambda t: t.shortlabel('%s (collector box)' % t.category()))
-    v_object = v.clone().trackmap(lambda t: t.shortlabel('%s (ML box)' % t.category()))
-    return VideoProposalRefinement()(v_object, dt=dt, miniou=miniou, smoothing=smoothing).union(v_human, spatial_iou_threshold=1)
-
