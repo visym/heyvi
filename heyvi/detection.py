@@ -433,7 +433,8 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.  
         - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.
         - The tracker compbines these rescored detections as in the VideoTracker.
-        - When done, each track is assigned to a proposal. 
+        - When done, each proposal is assigned to one track, and track IDs and activity IDs are mappped accordingly. 
+        - Activities that no longer overlap the actor track are removed
 
     Usage:
 
@@ -447,8 +448,9 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         - The combined video vm has both the weak annotation and the refined tracks.
 
     """
-    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=64):
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=60, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=256):
         # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
+        # Increased maxhistory with wide measurement assignment gate to reacquire lost tracks (detections are weighted by weak annotation alignment, so wide gate is low risk)
         super().__init__(minconf=minconf, miniou=miniou, maxhistory=maxhistory, objects=None, trackconf=trackconf, verbose=verbose, gpu=gpu, batchsize=batchsize, weightfile=weightfile, overlapfrac=overlapfrac, detbatchsize=detbatchsize, gate=gate)
 
     def _track(self, vi, stride=1, continuous=False, buffered=True):
@@ -463,12 +465,12 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
             for ti in vi.tracklist():
                 t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best track for weak annotation
                 vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
-        return vt.trackfilter(lambda t: t.id() in vi.tracks())  
+        return vt.trackfilter(lambda t: t.id() in vi.tracks()).activityfilter(lambda a: a.actorid() is not None and a.hastrackoverlap(vt.track(a.actorid())))
             
 
 class WeakAnnotationFaceTracker(FaceTracker):
     """See `heyvi.detection.WeakAnnotationTracker`"""
-    def __call__(self, vi, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, smoothing=None):
+    def __call__(self, vi, minconf=0.001, miniou=0.6, maxhistory=60, trackconf=0.005, smoothing=None):
         # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
         f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
         return super().__call__(vi, minconf=minconf, miniou=miniou, maxhistory=maxhistory, smoothing=None, trackconf=trackconf, rescore=f_rescorer)

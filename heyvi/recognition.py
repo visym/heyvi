@@ -153,7 +153,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         y_hat = self.forward(x)
         y_hat_softmax = F.softmax(y_hat, dim=1)
 
-        (loss, n_valid) = (0, 0)
+        (loss, n_valid, y_classindex) = (0, 0, [])
         C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
         for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
             labels = json.loads(labelstr)
@@ -161,7 +161,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                 continue  # skip me
             lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
             lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
-            lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one
+            lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
             for (y,w) in lbl_weight.items():
                 if valstep:
                     # Pick all labels normalized (https://papers.nips.cc/paper/2019/file/da647c549dde572c2c5edc4f5bef039c-Paper.pdf
@@ -186,11 +186,13 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                     loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), F.one_hot(torch.tensor([self._class_to_index[y]], device=y_hat.device), num_classes=len(C)).type(yh.type()), weight=C)
 
             n_valid += 1
+            y_classindex.append( self._class_to_index[max(lbllist, key=lbllist.count)] if len(lbllist) > 0 else None )   # most frequent label in clip
+
         loss = loss / float(max(1, n_valid))  # batch reduction: mean
 
         if logging:
             self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return {'loss': loss}
+        return {'loss': loss} if not valstep else {'loss': loss, 'logit': y_hat, 'classindex': y_classindex}
 
     def validation_step(self, batch, batch_nb):
         loss = self.training_step(batch, batch_nb, logging=False, valstep=True)['loss']
@@ -411,6 +413,8 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._mlfl = True
         self._mlbl = False
         self._bce = bce
+        self._calibration_multiclass = None
+        self._calibration_binary = None
         
         if deterministic:
             np.random.seed(42)
@@ -437,11 +441,15 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         
 
     #---- <LIGHTNING>
+    def validation_step(self, batch, batch_nb):
+        s = self.training_step(batch, batch_nb, logging=False, valstep=True)
+        self.log('val_loss', s['loss'], on_step=True, on_epoch=True, prog_bar=False, logger=True)
+        return {'val_loss': s['loss'], 'logit': s['logit'], 'classindex':s['classindex']}
+
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
         self.log('val_loss', avg_loss, on_epoch=True, prog_bar=False, logger=True)
         self.log('avg_val_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)                
-        #return {'val_loss': avg_loss, 'avg_val_loss': avg_loss}   # as of 9.1, this does not return anything
     #---- </LIGHTNING>
         
     def totensor(self, v=None, training=False, validation=False, show=False, doflip=False, asjson=False):
@@ -451,6 +459,30 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
              PIP_370k._totensor(v, training, validation, input_size, num_frames, mean, std, noflip=['car_turns_left', 'car_turns_right', 'vehicle_turns_left', 'vehicle_turns_right', 'motorcycle_turns_left', 'motorcycle_turns_right'], show=show, doflip=doflip, asjson=asjson, classname=classname))
         return f(v) if v is not None else f
     
+    def calibrate(self, valset):
+        from netcal.scaling import LogisticCalibration, TemperatureScaling
+
+        x_logit = [(self.forward(x), y) for (x,y) in valset]
+        (logits, ground_truth) = (np.vstack([r for x in outputs for (r,c) in zip(np.array(x['logit'].detach().cpu()), x['classindex']) if c is not None]), np.array([y for x in outputs for y in x['classindex'] if y is not None]))
+
+        self._calibration_multiclass = TemperatureScaling()
+        self._calibration_multiclass.fit(np.array(F.softmax(torch.from_numpy(logits), dim=1)), ground_truth)
+        self._calibration_binary = {k:(LogisticCalibration(), float(np.mean(logits[:,k])))  for k in sorted(self.class_to_index().values())}
+        for (k,(s,m)) in self._calibration_binary.items():
+            (binary_confidences, binary_ground_truth) = (np.array(torch.sigmoid(torch.from_numpy(logits[:,k]-m))), np.array([1 if y==k else 0 for y in ground_truth]))
+            if np.any(binary_ground_truth):
+                s.fit(binary_confidences, binary_ground_truth)
+            else:
+                self._calibration_binary[k] = (None,0)  # no samples for calibration, prediction will always be zero
+        return self
+
+    def calibration(self, x_logits):
+        assert hasattr(self, '_calibration_multiclass') and self._calibration_multiclass is not None 
+        assert hasattr(self, '_calibration_binary') and self._calibration_binary is not None 
+        xn = np.array(x_logits.detach().cpu())
+        return torch.multiply(torch.from_numpy(self._calibration_multiclass(np.array(F.softmax(x_logits, dim=1).detach().cpu()))),
+                              torch.from_numpy(np.hstack([(s.transform(np.array(F.sigmoid(x_logits[:,k]-m).detach().cpu())) if s is not None else np.zeros_like(xn[:,k])).reshape(xn.shape[0],1) for (k,(s,m)) in self._calibration_binary.items()])))
+
 
 class ActivityTracker(PIP_370k):
     """Video Activity detection.
@@ -716,4 +748,4 @@ class ActivityTracker(PIP_370k):
 class ActivityTrackerCap(ActivityTracker, CAP):
     pass
 
-    
+
