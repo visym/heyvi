@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L1-L276" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L1-L260" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import vipy
@@ -149,36 +149,77 @@ class Tracker():
 
     To run on a livestream:
 
-    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
-    &gt;&gt;&gt; T = heyvi.system.Tracker()
-    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
-    &gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
+    ```python
+    v = heyvi.sensor.rtsp()
+    T = heyvi.system.Tracker()
+    with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+        T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
+    ```
 
-    To run on an input file:
-    
-    &gt;&gt;&gt; v = vipy.video.Scene(filename=infile, framerate=5)
-    &gt;&gt;&gt; T = heyvi.system.Tracker()
-    &gt;&gt;&gt; T(v).annotate(&#39;annotation.mp4&#39;)    
-    
+    To run on an input file as a batch:
+
+    ```python
+    v = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    T = heyvi.system.Tracker()
+    v_tracked = T(v)
+    v_tracked.annotate(&#39;annotation.mp4&#39;)    
+    ```
+
+    To stream tracks computed per frame
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,vo) in enumerate(T.stream(vi)):
+        print(vo)  # tracking result at frame f
+    ```
+
+    To stream tracks computed per frame, along with pixels for current frame
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,(im,vo)) in enumerate(zip(vi, T.stream(vi)))
+        print(vo)  # tracking result at frame f
+        print(im)  # `vipy.image.Image` with pixels available as im.numpy()
+    ```
+
+    To stream tracks computed per frame, along with the most recent video clip of length 16:
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,(vc,vo)) in enumerate(zip(vi.stream().clip(16), T.stream(vi)))
+        print(vo)  # tracking result at frame f
+        print(vc)  # `vipy.video.Scene` with pixels for clips of length 16
+    ```
+
+    For additional use cases for streaming batches, clips, frames, delays see the [vipy documentation](https://visym.github.io/vipy)
+
+    Returns:
+        `vipy.video.Scene` objects with tracks corresponding to objects in `heyvi.detection.MultiscaleVideoTracker.classlist`.  Object tracks are &#34;person&#34;, &#34;vehicle&#34;, &#34;bicycle&#34;.
+
     &#34;&#34;&#34;
     def __init__(self):
         assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
         assert torch.cuda.device_count() &gt;= 4
 
-        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles  
-        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)   # TESTING: overlapfrac=6-&gt;0
+        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle 
+        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)  
         
-    def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
+    def __call__(self, vi, frame_callback=None, verbose=True):
+        &#34;&#34;&#34;Batch tracking of input video file&#34;&#34;&#34;
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
+        for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
                 frame_callback(im)  
             if verbose and v is not None:
                 print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
         return vi
     
+    def stream(self, vi):
+        &#34;&#34;&#34;Tracking iterator of input video&#34;&#34;&#34;        
+        for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
+            yield v
 
             
 class Actev21():
@@ -245,63 +286,6 @@ class Actev21():
     
 
 
-    
-import pycollector
-import pycollector.version
-import pycollector.label
-class CAP():
-    &#34;&#34;&#34;heyvi.system.CAP class
-
-    &#34;&#34;&#34;
-    
-    def __init__(self):
-        
-        assert vipy.version.is_at_least(&#39;1.11.15&#39;)
-        assert heyvi.version.is_at_least(&#39;0.2.5&#39;)
-        assert pycollector.version.is_at_least(&#39;0.4.2&#39;)        
-        assert torch.cuda.device_count() &gt;= 4
-        
-        self._activitymodel = &#39;./cap_epoch_15_step_64063.ckpt&#39;  # local testing only
-        #self._activitymodel = &#39;./cap_epoch_17_step_72071.ckpt&#39;  # local testing only        
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
-        
-    def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None, livestream=False):
-
-        assert isinstance(vi, vipy.video.Scene)
-        assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
-
-        livedelay = 2*15*5 if vi.islive() or livestream else 5 
-        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
-        track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
-        detect = heyvi.recognition.ActivityTrackerCap(gpus=[0,1,2,3], batchsize=64, modelfile=self._activitymodel, stride=3)   # stride should match tracker stride 4-&gt;3
-        
-        gc.disable()
-        (srcdim, srcfps) = (vi.mindim(), vi.framerate())
-        vs = vs if vs is not None else contextlib.nullcontext()                
-        vi = vi.mindim(960).framerate(5)
-        for (f, (im,vi)) in enumerate(zip(vi.stream(buffered=True).frame(delay=livedelay),  # live stream delay (must be &gt;= 2x finalized period)
-                                          detect(track(vi, stride=3, buffered=vi.islive()),
-                                                 mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive(), finalized=(livedelay//2) if vi.islive() or livestream else True))):
-            if callable(frame_callback) and im is not None:
-                frame_callback(self._annotator(im.clone()), im, vi)  
-            if verbose:
-                print(&#39;[heyvi.system.Actev21][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
-                
-        vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
-        vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
-        vo = vo.mindim(srcdim)  # upscale tracks back to source resolution
-        gc.enable()
-
-        return vo
-
-
-    def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
-        return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
-                .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
-                          timestamp=True,
-                          fontsize=6,
-                          outfile=outfile))  # colored boxes by track id, activity captions with confidence, 5Hz, 512x(-1) resolution    
-    
     </code></pre>
 </details>
 </section>
@@ -328,7 +312,7 @@ class CAP():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L155-L215" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L196-L256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Actev21():
     &#34;&#34;&#34;heyvi.system.Actev21 class
@@ -402,92 +386,7 @@ class CAP():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L210-L215" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
-    return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
-            .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
-                      timestamp=True,
-                      fontsize=6,
-                      outfile=outfile))  # colored boxes by track id, activity captions with confidence, 5Hz, 512x(-1) resolution    </code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-<dt id="heyvi.system.CAP"><code class="flex name class">
-<span>class <span class="ident">CAP</span></span>
-</code></dt>
-<dd>
-<div class="desc"><p>heyvi.system.CAP class</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L223-L274" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class CAP():
-    &#34;&#34;&#34;heyvi.system.CAP class
-
-    &#34;&#34;&#34;
-    
-    def __init__(self):
-        
-        assert vipy.version.is_at_least(&#39;1.11.15&#39;)
-        assert heyvi.version.is_at_least(&#39;0.2.5&#39;)
-        assert pycollector.version.is_at_least(&#39;0.4.2&#39;)        
-        assert torch.cuda.device_count() &gt;= 4
-        
-        self._activitymodel = &#39;./cap_epoch_15_step_64063.ckpt&#39;  # local testing only
-        #self._activitymodel = &#39;./cap_epoch_17_step_72071.ckpt&#39;  # local testing only        
-        self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
-        
-    def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None, livestream=False):
-
-        assert isinstance(vi, vipy.video.Scene)
-        assert vs is None or (isinstance(vs, vipy.video.Stream) and vs.framerate() == 5)
-
-        livedelay = 2*15*5 if vi.islive() or livestream else 5 
-        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles
-        track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
-        detect = heyvi.recognition.ActivityTrackerCap(gpus=[0,1,2,3], batchsize=64, modelfile=self._activitymodel, stride=3)   # stride should match tracker stride 4-&gt;3
-        
-        gc.disable()
-        (srcdim, srcfps) = (vi.mindim(), vi.framerate())
-        vs = vs if vs is not None else contextlib.nullcontext()                
-        vi = vi.mindim(960).framerate(5)
-        for (f, (im,vi)) in enumerate(zip(vi.stream(buffered=True).frame(delay=livedelay),  # live stream delay (must be &gt;= 2x finalized period)
-                                          detect(track(vi, stride=3, buffered=vi.islive()),
-                                                 mirror=False, trackconf=0.2, minprob=minconf, maxdets=105, avgdets=70, throttle=True, activityiou=0.1, buffered=vi.islive(), finalized=(livedelay//2) if vi.islive() or livestream else True))):
-            if callable(frame_callback) and im is not None:
-                frame_callback(self._annotator(im.clone()), im, vi)  
-            if verbose:
-                print(&#39;[heyvi.system.Actev21][%s][%d]: %s&#39; % (timestamp(), f, vi), end=&#39;\r&#39;)                                    
-                
-        vi.activityfilter(lambda a: a.category() not in [&#39;person&#39;, &#39;person_walks&#39;, &#39;vehicle&#39;, &#39;car_moves&#39;])   # remove background activities
-        vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
-        vo = vo.mindim(srcdim)  # upscale tracks back to source resolution
-        gc.enable()
-
-        return vo
-
-
-    def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
-        return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
-                .annotate(mutator=vipy.image.mutator_show_trackindex_verbonly(confidence=True) if (not trackonly and not nounonly) else (vipy.image.mutator_show_trackonly() if trackonly else vipy.image.mutator_show_nounonly(nocaption=True)),
-                          timestamp=True,
-                          fontsize=6,
-                          outfile=outfile))  # colored boxes by track id, activity captions with confidence, 5Hz, 512x(-1) resolution    </code></pre>
-</details>
-<h3>Methods</h3>
-<dl>
-<dt id="heyvi.system.CAP.annotate"><code class="name flex">
-<span>def <span class="ident">annotate</span></span>(<span>self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L269-L274" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L251-L256" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def annotate(self, v, outfile, minconf=0.1, trackonly=False, nounonly=False, mindim=512):
     return (v.mindim(mindim).activityfilter(lambda a: a.confidence() &gt;= float(minconf))
@@ -523,7 +422,7 @@ class CAP():
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L67-L115" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L67-L115" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Recorder():
     &#34;&#34;&#34;Record a livestream to an output video file
@@ -582,56 +481,139 @@ class CAP():
 <dd>
 <div class="desc"><p>heyvi.system.Tracker class</p>
 <p>To run on a livestream:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; v = heyvi.sensor.rtsp()
-&gt;&gt;&gt; T = heyvi.system.Tracker()
-&gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
-&gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
+<pre><code class="language-python">v = heyvi.sensor.rtsp()
+T = heyvi.system.Tracker()
+with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+    T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
 </code></pre>
-<p>To run on an input file:</p>
-<pre><code class="language-python-repl">&gt;&gt;&gt; v = vipy.video.Scene(filename=infile, framerate=5)
-&gt;&gt;&gt; T = heyvi.system.Tracker()
-&gt;&gt;&gt; T(v).annotate('annotation.mp4')
-</code></pre></div>
+<p>To run on an input file as a batch:</p>
+<pre><code class="language-python">v = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5)
+T = heyvi.system.Tracker()
+v_tracked = T(v)
+v_tracked.annotate('annotation.mp4')    
+</code></pre>
+<p>To stream tracks computed per frame</p>
+<pre><code class="language-python">vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5)
+for (f,vo) in enumerate(T.stream(vi)):
+    print(vo)  # tracking result at frame f
+</code></pre>
+<p>To stream tracks computed per frame, along with pixels for current frame</p>
+<pre><code class="language-python">vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5)
+for (f,(im,vo)) in enumerate(zip(vi, T.stream(vi)))
+    print(vo)  # tracking result at frame f
+    print(im)  # `vipy.image.Image` with pixels available as im.numpy()
+</code></pre>
+<p>To stream tracks computed per frame, along with the most recent video clip of length 16:</p>
+<pre><code class="language-python">vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5)
+for (f,(vc,vo)) in enumerate(zip(vi.stream().clip(16), T.stream(vi)))
+    print(vo)  # tracking result at frame f
+    print(vc)  # `vipy.video.Scene` with pixels for clips of length 16
+</code></pre>
+<p>For additional use cases for streaming batches, clips, frames, delays see the <a href="https://visym.github.io/vipy">vipy documentation</a></p>
+<h2 id="returns">Returns</h2>
+<p><code>vipy.video.Scene</code> objects with tracks corresponding to objects in <code>heyvi.detection.MultiscaleVideoTracker.classlist</code>.
+Object tracks are "person", "vehicle", "bicycle".</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L118-L151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L118-L193" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Tracker():
     &#34;&#34;&#34;heyvi.system.Tracker class
 
     To run on a livestream:
 
-    &gt;&gt;&gt; v = heyvi.sensor.rtsp()
-    &gt;&gt;&gt; T = heyvi.system.Tracker()
-    &gt;&gt;&gt; with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
-    &gt;&gt;&gt;     T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
+    ```python
+    v = heyvi.sensor.rtsp()
+    T = heyvi.system.Tracker()
+    with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+        T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10))), minconf=0.5)
+    ```
 
-    To run on an input file:
-    
-    &gt;&gt;&gt; v = vipy.video.Scene(filename=infile, framerate=5)
-    &gt;&gt;&gt; T = heyvi.system.Tracker()
-    &gt;&gt;&gt; T(v).annotate(&#39;annotation.mp4&#39;)    
-    
+    To run on an input file as a batch:
+
+    ```python
+    v = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    T = heyvi.system.Tracker()
+    v_tracked = T(v)
+    v_tracked.annotate(&#39;annotation.mp4&#39;)    
+    ```
+
+    To stream tracks computed per frame
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,vo) in enumerate(T.stream(vi)):
+        print(vo)  # tracking result at frame f
+    ```
+
+    To stream tracks computed per frame, along with pixels for current frame
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,(im,vo)) in enumerate(zip(vi, T.stream(vi)))
+        print(vo)  # tracking result at frame f
+        print(im)  # `vipy.image.Image` with pixels available as im.numpy()
+    ```
+
+    To stream tracks computed per frame, along with the most recent video clip of length 16:
+
+    ```python
+    vi = vipy.video.Scene(filename=/path/to/infile.mp4&#39;, framerate=5)
+    for (f,(vc,vo)) in enumerate(zip(vi.stream().clip(16), T.stream(vi)))
+        print(vo)  # tracking result at frame f
+        print(vc)  # `vipy.video.Scene` with pixels for clips of length 16
+    ```
+
+    For additional use cases for streaming batches, clips, frames, delays see the [vipy documentation](https://visym.github.io/vipy)
+
+    Returns:
+        `vipy.video.Scene` objects with tracks corresponding to objects in `heyvi.detection.MultiscaleVideoTracker.classlist`.  Object tracks are &#34;person&#34;, &#34;vehicle&#34;, &#34;bicycle&#34;.
+
     &#34;&#34;&#34;
     def __init__(self):
         assert vipy.version.is_at_least(&#39;1.11.11&#39;)
         assert heyvi.version.is_at_least(&#39;0.0.5&#39;)        
         assert torch.cuda.device_count() &gt;= 4
 
-        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle, no motorcycles  
-        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)   # TESTING: overlapfrac=6-&gt;0
+        objects = [&#39;person&#39;, (&#39;car&#39;,&#39;vehicle&#39;), (&#39;truck&#39;,&#39;vehicle&#39;), (&#39;bus&#39;, &#39;vehicle&#39;), &#39;bicycle&#39;]  # merge truck/bus/car to vehicle 
+        self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)  
         
-    def __call__(self, vi, minconf=0.04, frame_callback=None, verbose=True):
+    def __call__(self, vi, frame_callback=None, verbose=True):
+        &#34;&#34;&#34;Batch tracking of input video file&#34;&#34;&#34;
         assert isinstance(vi, vipy.video.Scene)
 
-        for (k, (im,v)) in enumerate(zip(vi.stream(rebuffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
+        for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
                 frame_callback(im)  
             if verbose and v is not None:
                 print(&#39;[heyvi.system.Tracker][%s][%d]: %s&#39; % (timestamp(), k, str(v)+&#39; &#39;*100), end=&#39;\r&#39;)
-        return vi</code></pre>
+        return vi
+    
+    def stream(self, vi):
+        &#34;&#34;&#34;Tracking iterator of input video&#34;&#34;&#34;        
+        for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
+            yield v</code></pre>
 </details>
+<h3>Methods</h3>
+<dl>
+<dt id="heyvi.system.Tracker.stream"><code class="name flex">
+<span>def <span class="ident">stream</span></span>(<span>self, vi)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>Tracking iterator of input video</p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L190-L193" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">def stream(self, vi):
+    &#34;&#34;&#34;Tracking iterator of input video&#34;&#34;&#34;        
+    for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
+        yield v</code></pre>
+</details>
+</dd>
+</dl>
 </dd>
 <dt id="heyvi.system.YoutubeLive"><code class="flex name class">
 <span>class <span class="ident">YoutubeLive</span></span>
@@ -653,7 +635,7 @@ The youtube live key (<a href="https://support.google.com/youtube/answer/9854503
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/system.py#L14-L64" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/system.py#L14-L64" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class YoutubeLive():
     &#34;&#34;&#34;Youtube Live stream.
@@ -782,16 +764,13 @@ setTimeout(() => input.focus(), 100);
 </ul>
 </li>
 <li>
-<h4><code><a title="heyvi.system.CAP" href="#heyvi.system.CAP">CAP</a></code></h4>
-<ul class="">
-<li><code><a title="heyvi.system.CAP.annotate" href="#heyvi.system.CAP.annotate">annotate</a></code></li>
-</ul>
-</li>
-<li>
 <h4><code><a title="heyvi.system.Recorder" href="#heyvi.system.Recorder">Recorder</a></code></h4>
 </li>
 <li>
 <h4><code><a title="heyvi.system.Tracker" href="#heyvi.system.Tracker">Tracker</a></code></h4>
+<ul class="">
+<li><code><a title="heyvi.system.Tracker.stream" href="#heyvi.system.Tracker.stream">stream</a></code></li>
+</ul>
 </li>
 <li>
 <h4><code><a title="heyvi.system.YoutubeLive" href="#heyvi.system.YoutubeLive">YoutubeLive</a></code></h4>

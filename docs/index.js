@@ -29,6 +29,7 @@ URLS=[
 "heyvi/model/yolov3/utils/utils.html",
 "heyvi/model/yolov3/network.html",
 "heyvi/label.html",
+"heyvi/cap.html",
 "heyvi/version.html",
 "heyvi/recognition.html",
 "heyvi/util.html",
@@ -75,7 +76,13 @@ INDEX=[
 {
 "ref":"heyvi.system.Tracker",
 "url":2,
-"doc":"heyvi.system.Tracker class To run on a livestream: >>> v = heyvi.sensor.rtsp() >>> T = heyvi.system.Tracker() >>> with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: >>> T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10 ), minconf=0.5) To run on an input file: >>> v = vipy.video.Scene(filename=infile, framerate=5) >>> T = heyvi.system.Tracker() >>> T(v).annotate('annotation.mp4')"
+"doc":"heyvi.system.Tracker class To run on a livestream:   v = heyvi.sensor.rtsp() T = heyvi.system.Tracker() with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: T(v, frame_callback=lambda im: s(im.pixelize().annotate(fontsize=15, timestamp=heyvi.util.timestamp(), timestampoffset=(6,10 ), minconf=0.5)   To run on an input file as a batch:   v = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5) T = heyvi.system.Tracker() v_tracked = T(v) v_tracked.annotate('annotation.mp4')   To stream tracks computed per frame   vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5) for (f,vo) in enumerate(T.stream(vi : print(vo)  tracking result at frame f   To stream tracks computed per frame, along with pixels for current frame   vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5) for (f,(im,vo in enumerate(zip(vi, T.stream(vi ) print(vo)  tracking result at frame f print(im)   vipy.image.Image with pixels available as im.numpy()   To stream tracks computed per frame, along with the most recent video clip of length 16:   vi = vipy.video.Scene(filename=/path/to/infile.mp4', framerate=5) for (f,(vc,vo in enumerate(zip(vi.stream().clip(16), T.stream(vi ) print(vo)  tracking result at frame f print(vc)   vipy.video.Scene with pixels for clips of length 16   For additional use cases for streaming batches, clips, frames, delays see the [vipy documentation](https: visym.github.io/vipy) Returns:  vipy.video.Scene objects with tracks corresponding to objects in  heyvi.detection.MultiscaleVideoTracker.classlist . Object tracks are \"person\", \"vehicle\", \"bicycle\"."
+},
+{
+"ref":"heyvi.system.Tracker.stream",
+"url":2,
+"doc":"Tracking iterator of input video",
+"func":1
 },
 {
 "ref":"heyvi.system.Actev21",
@@ -84,17 +91,6 @@ INDEX=[
 },
 {
 "ref":"heyvi.system.Actev21.annotate",
-"url":2,
-"doc":"",
-"func":1
-},
-{
-"ref":"heyvi.system.CAP",
-"url":2,
-"doc":"heyvi.system.CAP class"
-},
-{
-"ref":"heyvi.system.CAP.annotate",
 "url":2,
 "doc":"",
 "func":1
@@ -1905,676 +1901,692 @@ INDEX=[
 "func":1
 },
 {
-"ref":"heyvi.version",
+"ref":"heyvi.cap",
 "url":30,
 "doc":""
 },
 {
-"ref":"heyvi.version.num",
+"ref":"heyvi.cap.CAP",
 "url":30,
+"doc":"heyvi.system.CAP class"
+},
+{
+"ref":"heyvi.cap.CAP.annotate",
+"url":30,
+"doc":"",
+"func":1
+},
+{
+"ref":"heyvi.version",
+"url":31,
+"doc":""
+},
+{
+"ref":"heyvi.version.num",
+"url":31,
 "doc":"Convert the version string of the form 'X.Y.Z' to an integer 100000 X + 100 Y + Z for version comparison",
 "func":1
 },
 {
 "ref":"heyvi.version.split",
-"url":30,
+"url":31,
 "doc":"Split the version string 'X.Y.Z' and return tuple (int(X), int(Y), int(Z ",
 "func":1
 },
 {
 "ref":"heyvi.version.major",
-"url":30,
+"url":31,
 "doc":"Return the major version number int(X) for versionstring 'X.Y.Z'",
 "func":1
 },
 {
 "ref":"heyvi.version.minor",
-"url":30,
+"url":31,
 "doc":"Return the minor version number int(Y) for versionstring 'X.Y.Z'",
 "func":1
 },
 {
 "ref":"heyvi.version.release",
-"url":30,
+"url":31,
 "doc":"Return the release version number int(Z) for versionstring 'X.Y.Z'",
 "func":1
 },
 {
 "ref":"heyvi.version.at_least_version",
-"url":30,
+"url":31,
 "doc":"Is versionstring='X.Y.Z' at least the current version?",
 "func":1
 },
 {
 "ref":"heyvi.version.is_at_least",
-"url":30,
+"url":31,
 "doc":"Synonym for at_least_version",
 "func":1
 },
 {
 "ref":"heyvi.version.is_exactly",
-"url":30,
+"url":31,
 "doc":"Is the versionstring = 'X,Y.Z' exactly equal to heyvi.__version__",
 "func":1
 },
 {
 "ref":"heyvi.version.at_least_major_version",
-"url":30,
+"url":31,
 "doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
 "func":1
 },
 {
 "ref":"heyvi.recognition",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.class_to_index",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.index_to_class",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.classlist",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.num_classes",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.fromindex",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.label_confidence",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.activity",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.top1",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.topk",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.temporal_support",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.totensor",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityRecognition.binary_vector",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k",
-"url":31,
+"url":32,
 "doc":"Activity recognition using people in public - 250k stabilized"
 },
 {
 "ref":"heyvi.recognition.PIP_250k.dump_patches",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.PIP_250k.training",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.PIP_250k.category",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.category_confidence",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.topk",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.topk_probability",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.forward",
-"url":31,
+"url":32,
 "doc":"Same as :meth: torch.nn.Module.forward() . Args:  args: Whatever you decide to pass into the forward method.  kwargs: Keyword arguments are also possible. Return: Your model's output",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.configure_optimizers",
-"url":31,
+"url":32,
 "doc":"Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one. But in the case of GANs or similar you might have multiple. Return: Any of these 6 options. -  Single optimizer . -  List or Tuple of optimizers. -  Two lists - The first list has multiple optimizers, and the second has multiple LR schedulers (or multiple  lr_dict ). -  Dictionary , with an  \"optimizer\" key, and (optionally) a  \"lr_scheduler\" key whose value is a single LR scheduler or  lr_dict . -  Tuple of dictionaries as described above, with an optional  \"frequency\" key. -  None - Fit will run without any optimizer. The  lr_dict is a dictionary which contains the scheduler and its associated configuration. The default configuration is shown below.  code-block python lr_dict = {  REQUIRED: The scheduler instance \"scheduler\": lr_scheduler,  The unit of the scheduler's step size, could also be 'step'.  'epoch' updates the scheduler on epoch end whereas 'step'  updates it after a optimizer update. \"interval\": \"epoch\",  How many epochs/steps should pass between calls to   scheduler.step() . 1 corresponds to updating the learning  rate after every epoch/step. \"frequency\": 1,  Metric to to monitor for schedulers like  ReduceLROnPlateau \"monitor\": \"val_loss\",  If set to  True , will enforce that the value specified 'monitor'  is available when the scheduler is updated, thus stopping  training if not found. If set to  False , it will only produce a warning \"strict\": True,  If using the  LearningRateMonitor callback to monitor the  learning rate progress, this keyword can be used to specify  a custom logged name \"name\": None, } When there are schedulers in which the  .step() method is conditioned on a value, such as the :class: torch.optim.lr_scheduler.ReduceLROnPlateau scheduler, Lightning requires that the  lr_dict contains the keyword  \"monitor\" set to the metric name that the scheduler should be conditioned on.  testcode  The ReduceLROnPlateau scheduler requires a monitor def configure_optimizers(self): optimizer = Adam( .) return { \"optimizer\": optimizer, \"lr_scheduler\": { \"scheduler\": ReduceLROnPlateau(optimizer,  .), \"monitor\": \"metric_to_track\", }, }  In the case of two optimizers, only one using the ReduceLROnPlateau scheduler def configure_optimizers(self): optimizer1 = Adam( .) optimizer2 = SGD( .) scheduler1 = ReduceLROnPlateau(optimizer1,  .) scheduler2 = LambdaLR(optimizer2,  .) return ( { \"optimizer\": optimizer1, \"lr_scheduler\": { \"scheduler\": scheduler1, \"monitor\": \"metric_to_track\", }, }, {\"optimizer\": optimizer2, \"lr_scheduler\": scheduler2}, ) Metrics can be made available to monitor by simply logging it using  self.log('metric_to_track', metric_val) in your :class: ~pytorch_lightning.core.lightning.LightningModule . Note: The  frequency value specified in a dict along with the  optimizer key is an int corresponding to the number of sequential batches optimized with the specific optimizer. It should be given to none or to all of the optimizers. There is a difference between passing multiple optimizers in a list, and passing multiple optimizers in dictionaries with a frequency of 1: - In the former case, all optimizers will operate on the given batch in each optimization step. - In the latter, only one optimizer will operate on the given batch at every step. This is different from the  frequency value specified in the  lr_dict mentioned above.  code-block python def configure_optimizers(self): optimizer_one = torch.optim.SGD(self.model.parameters(), lr=0.01) optimizer_two = torch.optim.SGD(self.model.parameters(), lr=0.01) return [ {\"optimizer\": optimizer_one, \"frequency\": 5}, {\"optimizer\": optimizer_two, \"frequency\": 10}, ] In this example, the first optimizer will be used for the first 5 steps, the second optimizer for the next 10 steps and that cycle will continue. If an LR scheduler is specified for an optimizer using the  lr_scheduler key in the above dict, the scheduler will only be updated when its optimizer is being used. Examples  most cases. no learning rate scheduler def configure_optimizers(self): return Adam(self.parameters(), lr=1e-3)  multiple optimizer case (e.g.: GAN) def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) return gen_opt, dis_opt  example with learning rate schedulers def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) dis_sch = CosineAnnealing(dis_opt, T_max=10) return [gen_opt, dis_opt], [dis_sch]  example with step-based learning rate schedulers  each optimizer has its own scheduler def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) gen_sch = { 'scheduler': ExponentialLR(gen_opt, 0.99), 'interval': 'step'  called after each training step } dis_sch = CosineAnnealing(dis_opt, T_max=10)  called every epoch return [gen_opt, dis_opt], [gen_sch, dis_sch]  example with optimizer frequencies  see training procedure in  Improved Training of Wasserstein GANs , Algorithm 1  https: arxiv.org/abs/1704.00028 def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) n_critic = 5 return ( {'optimizer': dis_opt, 'frequency': n_critic}, {'optimizer': gen_opt, 'frequency': 1} ) Note: Some things to know: - Lightning calls  .backward() and  .step() on each optimizer and learning rate scheduler as needed. - If you use 16-bit precision ( precision=16 ), Lightning will automatically handle the optimizers. - If you use multiple optimizers, :meth: training_step will have an additional  optimizer_idx parameter. - If you use :class: torch.optim.LBFGS , Lightning handles the closure function automatically for you. - If you use multiple optimizers, gradients will be calculated only for the parameters of current optimizer at each training step. - If you need to control how often those optimizers step or override the default  .step() schedule, override the :meth: optimizer_step hook.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.training_step",
-"url":31,
+"url":32,
 "doc":"Here you compute and return the training loss and some additional metrics for e.g. the progress bar or logger. Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): Integer displaying index of this batch optimizer_idx (int): When using multiple optimizers, this argument will also be present. hiddens(:class: ~torch.Tensor ): Passed in if :paramref: ~pytorch_lightning.core.lightning.LightningModule.truncated_bptt_steps > 0. Return: Any of. - :class: ~torch.Tensor - The loss tensor -  dict - A dictionary. Can include any keys, but must include the key  'loss' -  None - Training will skip to the next batch. This is only for automatic optimization. This is not supported for multi-GPU or TPU, or using  DeepSpeed . In this step you'd normally do the forward pass and calculate the loss for a batch. You can also do fancier things like multiple forward passes or something model specific. Example def training_step(self, batch, batch_idx): x, y, z = batch out = self.encoder(x) loss = self.loss(out, x) return loss If you define multiple optimizers, this step will be called with an additional  optimizer_idx parameter.  code-block python  Multiple optimizers (e.g.: GANs) def training_step(self, batch, batch_idx, optimizer_idx): if optimizer_idx  0:  do training_step with encoder  . if optimizer_idx  1:  do training_step with decoder  . If you add truncated back propagation through time you will also get an additional argument with the hidden states of the previous step.  code-block python  Truncated back-propagation through time def training_step(self, batch, batch_idx, hiddens):  hiddens are the hidden states from the previous truncated backprop step  . out, hiddens = self.lstm(data, hiddens)  . return {\"loss\": loss, \"hiddens\": hiddens} Note: The loss value shown in the progress bar is smoothed (averaged) over the last values, so it differs from the actual loss returned in train/validation step.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.validation_step",
-"url":31,
+"url":32,
 "doc":"Operates on a single batch of data from the validation set. In this step you'd might generate examples or calculate anything of interest like accuracy.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): The index of this batch dataloader_idx (int): The index of the dataloader that produced this batch (only if multiple val dataloaders used) Return: - Any object or value -  None - Validation will skip to the next batch  code-block python  pseudocode of order val_outs = [] for val_batch in val_data: out = validation_step(val_batch) if defined(\"validation_step_end\"): out = validation_step_end(out) val_outs.append(out) val_outs = validation_epoch_end(val_outs)  code-block python  if you have one val dataloader: def validation_step(self, batch, batch_idx):  .  if you have multiple val dataloaders: def validation_step(self, batch, batch_idx, dataloader_idx):  . Examples  CASE 1: A single validation dataset def validation_step(self, batch, batch_idx): x, y = batch  implement your own out = self(x) loss = self.loss(out, y)  log 6 example images  or generated text . or whatever sample_imgs = x[:6] grid = torchvision.utils.make_grid(sample_imgs) self.logger.experiment.add_image('example_images', grid, 0)  calculate acc labels_hat = torch.argmax(out, dim=1) val_acc = torch.sum(y  labels_hat).item() / (len(y)  1.0)  log the outputs! self.log_dict({'val_loss': loss, 'val_acc': val_acc}) If you pass in multiple val dataloaders, :meth: validation_step will have an additional argument.  code-block python  CASE 2: multiple validation dataloaders def validation_step(self, batch, batch_idx, dataloader_idx):  dataloader_idx tells you which dataset this is.  . Note: If you don't need to validate you don't need to implement this method. Note: When the :meth: validation_step is called, the model has been put in eval mode and PyTorch gradients have been disabled. At the end of validation, the model goes back to training mode and gradients are enabled.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.validation_epoch_end",
-"url":31,
+"url":32,
 "doc":"Called at the end of the validation epoch with the outputs of all validation steps.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: outputs: List of outputs you defined in :meth: validation_step , or if there are multiple dataloaders, a list containing a list of outputs for each dataloader. Return: None Note: If you didn't define a :meth: validation_step , this won't be called. Examples: With a single dataloader:  code-block python def validation_epoch_end(self, val_step_outputs): for out in val_step_outputs:  . With multiple dataloaders,  outputs will be a list of lists. The outer list contains one entry per dataloader, while the inner list contains the individual outputs of each validation step for that dataloader.  code-block python def validation_epoch_end(self, outputs): for dataloader_output_result in outputs: dataloader_outs = dataloader_output_result.dataloader_i_outputs self.log(\"final_metric\", final_value)",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.from_checkpoint",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_250k.totensor",
-"url":31,
+"url":32,
 "doc":"Return captured lambda function if v=None, else return tensor",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k",
-"url":31,
+"url":32,
 "doc":"Activity recognition using people in public - 250k stabilized"
 },
 {
 "ref":"heyvi.recognition.PIP_370k.dump_patches",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.PIP_370k.training",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.PIP_370k.forward",
-"url":31,
+"url":32,
 "doc":"Same as :meth: torch.nn.Module.forward() . Args:  args: Whatever you decide to pass into the forward method.  kwargs: Keyword arguments are also possible. Return: Your model's output",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.topk",
-"url":31,
+"url":32,
 "doc":"Return the top-k classes for a 3 second activity proposal along with framewise ground truth",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.totensor",
-"url":31,
+"url":32,
 "doc":"Return captured lambda function if v=None, else return tensor",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.configure_optimizers",
-"url":31,
+"url":32,
 "doc":"Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one. But in the case of GANs or similar you might have multiple. Return: Any of these 6 options. -  Single optimizer . -  List or Tuple of optimizers. -  Two lists - The first list has multiple optimizers, and the second has multiple LR schedulers (or multiple  lr_dict ). -  Dictionary , with an  \"optimizer\" key, and (optionally) a  \"lr_scheduler\" key whose value is a single LR scheduler or  lr_dict . -  Tuple of dictionaries as described above, with an optional  \"frequency\" key. -  None - Fit will run without any optimizer. The  lr_dict is a dictionary which contains the scheduler and its associated configuration. The default configuration is shown below.  code-block python lr_dict = {  REQUIRED: The scheduler instance \"scheduler\": lr_scheduler,  The unit of the scheduler's step size, could also be 'step'.  'epoch' updates the scheduler on epoch end whereas 'step'  updates it after a optimizer update. \"interval\": \"epoch\",  How many epochs/steps should pass between calls to   scheduler.step() . 1 corresponds to updating the learning  rate after every epoch/step. \"frequency\": 1,  Metric to to monitor for schedulers like  ReduceLROnPlateau \"monitor\": \"val_loss\",  If set to  True , will enforce that the value specified 'monitor'  is available when the scheduler is updated, thus stopping  training if not found. If set to  False , it will only produce a warning \"strict\": True,  If using the  LearningRateMonitor callback to monitor the  learning rate progress, this keyword can be used to specify  a custom logged name \"name\": None, } When there are schedulers in which the  .step() method is conditioned on a value, such as the :class: torch.optim.lr_scheduler.ReduceLROnPlateau scheduler, Lightning requires that the  lr_dict contains the keyword  \"monitor\" set to the metric name that the scheduler should be conditioned on.  testcode  The ReduceLROnPlateau scheduler requires a monitor def configure_optimizers(self): optimizer = Adam( .) return { \"optimizer\": optimizer, \"lr_scheduler\": { \"scheduler\": ReduceLROnPlateau(optimizer,  .), \"monitor\": \"metric_to_track\", }, }  In the case of two optimizers, only one using the ReduceLROnPlateau scheduler def configure_optimizers(self): optimizer1 = Adam( .) optimizer2 = SGD( .) scheduler1 = ReduceLROnPlateau(optimizer1,  .) scheduler2 = LambdaLR(optimizer2,  .) return ( { \"optimizer\": optimizer1, \"lr_scheduler\": { \"scheduler\": scheduler1, \"monitor\": \"metric_to_track\", }, }, {\"optimizer\": optimizer2, \"lr_scheduler\": scheduler2}, ) Metrics can be made available to monitor by simply logging it using  self.log('metric_to_track', metric_val) in your :class: ~pytorch_lightning.core.lightning.LightningModule . Note: The  frequency value specified in a dict along with the  optimizer key is an int corresponding to the number of sequential batches optimized with the specific optimizer. It should be given to none or to all of the optimizers. There is a difference between passing multiple optimizers in a list, and passing multiple optimizers in dictionaries with a frequency of 1: - In the former case, all optimizers will operate on the given batch in each optimization step. - In the latter, only one optimizer will operate on the given batch at every step. This is different from the  frequency value specified in the  lr_dict mentioned above.  code-block python def configure_optimizers(self): optimizer_one = torch.optim.SGD(self.model.parameters(), lr=0.01) optimizer_two = torch.optim.SGD(self.model.parameters(), lr=0.01) return [ {\"optimizer\": optimizer_one, \"frequency\": 5}, {\"optimizer\": optimizer_two, \"frequency\": 10}, ] In this example, the first optimizer will be used for the first 5 steps, the second optimizer for the next 10 steps and that cycle will continue. If an LR scheduler is specified for an optimizer using the  lr_scheduler key in the above dict, the scheduler will only be updated when its optimizer is being used. Examples  most cases. no learning rate scheduler def configure_optimizers(self): return Adam(self.parameters(), lr=1e-3)  multiple optimizer case (e.g.: GAN) def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) return gen_opt, dis_opt  example with learning rate schedulers def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) dis_sch = CosineAnnealing(dis_opt, T_max=10) return [gen_opt, dis_opt], [dis_sch]  example with step-based learning rate schedulers  each optimizer has its own scheduler def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) gen_sch = { 'scheduler': ExponentialLR(gen_opt, 0.99), 'interval': 'step'  called after each training step } dis_sch = CosineAnnealing(dis_opt, T_max=10)  called every epoch return [gen_opt, dis_opt], [gen_sch, dis_sch]  example with optimizer frequencies  see training procedure in  Improved Training of Wasserstein GANs , Algorithm 1  https: arxiv.org/abs/1704.00028 def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) n_critic = 5 return ( {'optimizer': dis_opt, 'frequency': n_critic}, {'optimizer': gen_opt, 'frequency': 1} ) Note: Some things to know: - Lightning calls  .backward() and  .step() on each optimizer and learning rate scheduler as needed. - If you use 16-bit precision ( precision=16 ), Lightning will automatically handle the optimizers. - If you use multiple optimizers, :meth: training_step will have an additional  optimizer_idx parameter. - If you use :class: torch.optim.LBFGS , Lightning handles the closure function automatically for you. - If you use multiple optimizers, gradients will be calculated only for the parameters of current optimizer at each training step. - If you need to control how often those optimizers step or override the default  .step() schedule, override the :meth: optimizer_step hook.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.training_step",
-"url":31,
+"url":32,
 "doc":"Here you compute and return the training loss and some additional metrics for e.g. the progress bar or logger. Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): Integer displaying index of this batch optimizer_idx (int): When using multiple optimizers, this argument will also be present. hiddens(:class: ~torch.Tensor ): Passed in if :paramref: ~pytorch_lightning.core.lightning.LightningModule.truncated_bptt_steps > 0. Return: Any of. - :class: ~torch.Tensor - The loss tensor -  dict - A dictionary. Can include any keys, but must include the key  'loss' -  None - Training will skip to the next batch. This is only for automatic optimization. This is not supported for multi-GPU or TPU, or using  DeepSpeed . In this step you'd normally do the forward pass and calculate the loss for a batch. You can also do fancier things like multiple forward passes or something model specific. Example def training_step(self, batch, batch_idx): x, y, z = batch out = self.encoder(x) loss = self.loss(out, x) return loss If you define multiple optimizers, this step will be called with an additional  optimizer_idx parameter.  code-block python  Multiple optimizers (e.g.: GANs) def training_step(self, batch, batch_idx, optimizer_idx): if optimizer_idx  0:  do training_step with encoder  . if optimizer_idx  1:  do training_step with decoder  . If you add truncated back propagation through time you will also get an additional argument with the hidden states of the previous step.  code-block python  Truncated back-propagation through time def training_step(self, batch, batch_idx, hiddens):  hiddens are the hidden states from the previous truncated backprop step  . out, hiddens = self.lstm(data, hiddens)  . return {\"loss\": loss, \"hiddens\": hiddens} Note: The loss value shown in the progress bar is smoothed (averaged) over the last values, so it differs from the actual loss returned in train/validation step.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.validation_step",
-"url":31,
+"url":32,
 "doc":"Operates on a single batch of data from the validation set. In this step you'd might generate examples or calculate anything of interest like accuracy.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): The index of this batch dataloader_idx (int): The index of the dataloader that produced this batch (only if multiple val dataloaders used) Return: - Any object or value -  None - Validation will skip to the next batch  code-block python  pseudocode of order val_outs = [] for val_batch in val_data: out = validation_step(val_batch) if defined(\"validation_step_end\"): out = validation_step_end(out) val_outs.append(out) val_outs = validation_epoch_end(val_outs)  code-block python  if you have one val dataloader: def validation_step(self, batch, batch_idx):  .  if you have multiple val dataloaders: def validation_step(self, batch, batch_idx, dataloader_idx):  . Examples  CASE 1: A single validation dataset def validation_step(self, batch, batch_idx): x, y = batch  implement your own out = self(x) loss = self.loss(out, y)  log 6 example images  or generated text . or whatever sample_imgs = x[:6] grid = torchvision.utils.make_grid(sample_imgs) self.logger.experiment.add_image('example_images', grid, 0)  calculate acc labels_hat = torch.argmax(out, dim=1) val_acc = torch.sum(y  labels_hat).item() / (len(y)  1.0)  log the outputs! self.log_dict({'val_loss': loss, 'val_acc': val_acc}) If you pass in multiple val dataloaders, :meth: validation_step will have an additional argument.  code-block python  CASE 2: multiple validation dataloaders def validation_step(self, batch, batch_idx, dataloader_idx):  dataloader_idx tells you which dataset this is.  . Note: If you don't need to validate you don't need to implement this method. Note: When the :meth: validation_step is called, the model has been put in eval mode and PyTorch gradients have been disabled. At the end of validation, the model goes back to training mode and gradients are enabled.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.PIP_370k.validation_epoch_end",
-"url":31,
+"url":32,
 "doc":"Called at the end of the validation epoch with the outputs of all validation steps.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: outputs: List of outputs you defined in :meth: validation_step , or if there are multiple dataloaders, a list containing a list of outputs for each dataloader. Return: None Note: If you didn't define a :meth: validation_step , this won't be called. Examples: With a single dataloader:  code-block python def validation_epoch_end(self, val_step_outputs): for out in val_step_outputs:  . With multiple dataloaders,  outputs will be a list of lists. The outer list contains one entry per dataloader, while the inner list contains the individual outputs of each validation step for that dataloader.  code-block python def validation_epoch_end(self, outputs): for dataloader_output_result in outputs: dataloader_outs = dataloader_output_result.dataloader_i_outputs self.log(\"final_metric\", final_value)",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP",
-"url":31,
+"url":32,
 "doc":"Activity recognition using people in public - 250k stabilized"
 },
 {
 "ref":"heyvi.recognition.CAP.dump_patches",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.CAP.training",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.CAP.forward",
-"url":31,
+"url":32,
 "doc":"Same as :meth: torch.nn.Module.forward() . Args:  args: Whatever you decide to pass into the forward method.  kwargs: Keyword arguments are also possible. Return: Your model's output",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.validation_epoch_end",
-"url":31,
+"url":32,
 "doc":"Called at the end of the validation epoch with the outputs of all validation steps.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: outputs: List of outputs you defined in :meth: validation_step , or if there are multiple dataloaders, a list containing a list of outputs for each dataloader. Return: None Note: If you didn't define a :meth: validation_step , this won't be called. Examples: With a single dataloader:  code-block python def validation_epoch_end(self, val_step_outputs): for out in val_step_outputs:  . With multiple dataloaders,  outputs will be a list of lists. The outer list contains one entry per dataloader, while the inner list contains the individual outputs of each validation step for that dataloader.  code-block python def validation_epoch_end(self, outputs): for dataloader_output_result in outputs: dataloader_outs = dataloader_output_result.dataloader_i_outputs self.log(\"final_metric\", final_value)",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.totensor",
-"url":31,
+"url":32,
 "doc":"Return captured lambda function if v=None, else return tensor",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.topk",
-"url":31,
+"url":32,
 "doc":"Return the top-k classes for a 3 second activity proposal along with framewise ground truth",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.configure_optimizers",
-"url":31,
+"url":32,
 "doc":"Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one. But in the case of GANs or similar you might have multiple. Return: Any of these 6 options. -  Single optimizer . -  List or Tuple of optimizers. -  Two lists - The first list has multiple optimizers, and the second has multiple LR schedulers (or multiple  lr_dict ). -  Dictionary , with an  \"optimizer\" key, and (optionally) a  \"lr_scheduler\" key whose value is a single LR scheduler or  lr_dict . -  Tuple of dictionaries as described above, with an optional  \"frequency\" key. -  None - Fit will run without any optimizer. The  lr_dict is a dictionary which contains the scheduler and its associated configuration. The default configuration is shown below.  code-block python lr_dict = {  REQUIRED: The scheduler instance \"scheduler\": lr_scheduler,  The unit of the scheduler's step size, could also be 'step'.  'epoch' updates the scheduler on epoch end whereas 'step'  updates it after a optimizer update. \"interval\": \"epoch\",  How many epochs/steps should pass between calls to   scheduler.step() . 1 corresponds to updating the learning  rate after every epoch/step. \"frequency\": 1,  Metric to to monitor for schedulers like  ReduceLROnPlateau \"monitor\": \"val_loss\",  If set to  True , will enforce that the value specified 'monitor'  is available when the scheduler is updated, thus stopping  training if not found. If set to  False , it will only produce a warning \"strict\": True,  If using the  LearningRateMonitor callback to monitor the  learning rate progress, this keyword can be used to specify  a custom logged name \"name\": None, } When there are schedulers in which the  .step() method is conditioned on a value, such as the :class: torch.optim.lr_scheduler.ReduceLROnPlateau scheduler, Lightning requires that the  lr_dict contains the keyword  \"monitor\" set to the metric name that the scheduler should be conditioned on.  testcode  The ReduceLROnPlateau scheduler requires a monitor def configure_optimizers(self): optimizer = Adam( .) return { \"optimizer\": optimizer, \"lr_scheduler\": { \"scheduler\": ReduceLROnPlateau(optimizer,  .), \"monitor\": \"metric_to_track\", }, }  In the case of two optimizers, only one using the ReduceLROnPlateau scheduler def configure_optimizers(self): optimizer1 = Adam( .) optimizer2 = SGD( .) scheduler1 = ReduceLROnPlateau(optimizer1,  .) scheduler2 = LambdaLR(optimizer2,  .) return ( { \"optimizer\": optimizer1, \"lr_scheduler\": { \"scheduler\": scheduler1, \"monitor\": \"metric_to_track\", }, }, {\"optimizer\": optimizer2, \"lr_scheduler\": scheduler2}, ) Metrics can be made available to monitor by simply logging it using  self.log('metric_to_track', metric_val) in your :class: ~pytorch_lightning.core.lightning.LightningModule . Note: The  frequency value specified in a dict along with the  optimizer key is an int corresponding to the number of sequential batches optimized with the specific optimizer. It should be given to none or to all of the optimizers. There is a difference between passing multiple optimizers in a list, and passing multiple optimizers in dictionaries with a frequency of 1: - In the former case, all optimizers will operate on the given batch in each optimization step. - In the latter, only one optimizer will operate on the given batch at every step. This is different from the  frequency value specified in the  lr_dict mentioned above.  code-block python def configure_optimizers(self): optimizer_one = torch.optim.SGD(self.model.parameters(), lr=0.01) optimizer_two = torch.optim.SGD(self.model.parameters(), lr=0.01) return [ {\"optimizer\": optimizer_one, \"frequency\": 5}, {\"optimizer\": optimizer_two, \"frequency\": 10}, ] In this example, the first optimizer will be used for the first 5 steps, the second optimizer for the next 10 steps and that cycle will continue. If an LR scheduler is specified for an optimizer using the  lr_scheduler key in the above dict, the scheduler will only be updated when its optimizer is being used. Examples  most cases. no learning rate scheduler def configure_optimizers(self): return Adam(self.parameters(), lr=1e-3)  multiple optimizer case (e.g.: GAN) def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) return gen_opt, dis_opt  example with learning rate schedulers def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) dis_sch = CosineAnnealing(dis_opt, T_max=10) return [gen_opt, dis_opt], [dis_sch]  example with step-based learning rate schedulers  each optimizer has its own scheduler def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) gen_sch = { 'scheduler': ExponentialLR(gen_opt, 0.99), 'interval': 'step'  called after each training step } dis_sch = CosineAnnealing(dis_opt, T_max=10)  called every epoch return [gen_opt, dis_opt], [gen_sch, dis_sch]  example with optimizer frequencies  see training procedure in  Improved Training of Wasserstein GANs , Algorithm 1  https: arxiv.org/abs/1704.00028 def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) n_critic = 5 return ( {'optimizer': dis_opt, 'frequency': n_critic}, {'optimizer': gen_opt, 'frequency': 1} ) Note: Some things to know: - Lightning calls  .backward() and  .step() on each optimizer and learning rate scheduler as needed. - If you use 16-bit precision ( precision=16 ), Lightning will automatically handle the optimizers. - If you use multiple optimizers, :meth: training_step will have an additional  optimizer_idx parameter. - If you use :class: torch.optim.LBFGS , Lightning handles the closure function automatically for you. - If you use multiple optimizers, gradients will be calculated only for the parameters of current optimizer at each training step. - If you need to control how often those optimizers step or override the default  .step() schedule, override the :meth: optimizer_step hook.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.training_step",
-"url":31,
+"url":32,
 "doc":"Here you compute and return the training loss and some additional metrics for e.g. the progress bar or logger. Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): Integer displaying index of this batch optimizer_idx (int): When using multiple optimizers, this argument will also be present. hiddens(:class: ~torch.Tensor ): Passed in if :paramref: ~pytorch_lightning.core.lightning.LightningModule.truncated_bptt_steps > 0. Return: Any of. - :class: ~torch.Tensor - The loss tensor -  dict - A dictionary. Can include any keys, but must include the key  'loss' -  None - Training will skip to the next batch. This is only for automatic optimization. This is not supported for multi-GPU or TPU, or using  DeepSpeed . In this step you'd normally do the forward pass and calculate the loss for a batch. You can also do fancier things like multiple forward passes or something model specific. Example def training_step(self, batch, batch_idx): x, y, z = batch out = self.encoder(x) loss = self.loss(out, x) return loss If you define multiple optimizers, this step will be called with an additional  optimizer_idx parameter.  code-block python  Multiple optimizers (e.g.: GANs) def training_step(self, batch, batch_idx, optimizer_idx): if optimizer_idx  0:  do training_step with encoder  . if optimizer_idx  1:  do training_step with decoder  . If you add truncated back propagation through time you will also get an additional argument with the hidden states of the previous step.  code-block python  Truncated back-propagation through time def training_step(self, batch, batch_idx, hiddens):  hiddens are the hidden states from the previous truncated backprop step  . out, hiddens = self.lstm(data, hiddens)  . return {\"loss\": loss, \"hiddens\": hiddens} Note: The loss value shown in the progress bar is smoothed (averaged) over the last values, so it differs from the actual loss returned in train/validation step.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.CAP.validation_step",
-"url":31,
+"url":32,
 "doc":"Operates on a single batch of data from the validation set. In this step you'd might generate examples or calculate anything of interest like accuracy.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): The index of this batch dataloader_idx (int): The index of the dataloader that produced this batch (only if multiple val dataloaders used) Return: - Any object or value -  None - Validation will skip to the next batch  code-block python  pseudocode of order val_outs = [] for val_batch in val_data: out = validation_step(val_batch) if defined(\"validation_step_end\"): out = validation_step_end(out) val_outs.append(out) val_outs = validation_epoch_end(val_outs)  code-block python  if you have one val dataloader: def validation_step(self, batch, batch_idx):  .  if you have multiple val dataloaders: def validation_step(self, batch, batch_idx, dataloader_idx):  . Examples  CASE 1: A single validation dataset def validation_step(self, batch, batch_idx): x, y = batch  implement your own out = self(x) loss = self.loss(out, y)  log 6 example images  or generated text . or whatever sample_imgs = x[:6] grid = torchvision.utils.make_grid(sample_imgs) self.logger.experiment.add_image('example_images', grid, 0)  calculate acc labels_hat = torch.argmax(out, dim=1) val_acc = torch.sum(y  labels_hat).item() / (len(y)  1.0)  log the outputs! self.log_dict({'val_loss': loss, 'val_acc': val_acc}) If you pass in multiple val dataloaders, :meth: validation_step will have an additional argument.  code-block python  CASE 2: multiple validation dataloaders def validation_step(self, batch, batch_idx, dataloader_idx):  dataloader_idx tells you which dataset this is.  . Note: If you don't need to validate you don't need to implement this method. Note: When the :meth: validation_step is called, the model has been put in eval mode and PyTorch gradients have been disabled. At the end of validation, the model goes back to training mode and gradients are enabled.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker",
-"url":31,
+"url":32,
 "doc":"Video Activity detection. Args (__call__): vi [generator of  vipy.video.Scene ]: The input video to be updated in place with detections. This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__ activityiou [float]: The minimum temporal iou for activity assignment mirror [bool]: If true, encode using the mean of a video encoding and the mirrored video encoding. This is slower as it requires 2x GPU forward passes minprob [float]: The minimum probability for new activity detection trackconf [float]: The minimum object detection confidence for new tracks maxdets [int]: The maximum number of allowable detections per frame. If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best avgdets [int]: The number of allowable detections per frame if throttled buffered [bool]: If true, then buffer streams. This is useful for activity detection on live streams. finalized [bool, int]: If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames. This is useful for streaming activity detection on unbounded inputs. Returns: The input video is updated in place."
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.dump_patches",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.training",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.temporal_stride",
-"url":31,
+"url":32,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.forward",
-"url":31,
+"url":32,
 "doc":"Overload forward for multi-gpu batch. Don't use torch DataParallel!",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.lrt",
-"url":31,
+"url":32,
 "doc":"top-k with likelihood ratio test with background null hypothesis",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.softmax",
-"url":31,
+"url":32,
 "doc":"Return a list of lists [(class_label, float(softmax), float(logit)  . ] for all classes and batches",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.finalize",
-"url":31,
+"url":32,
 "doc":"In place filtering of video to finalize",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.topk",
-"url":31,
+"url":32,
 "doc":"Return the top-k classes for a 3 second activity proposal along with framewise ground truth",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.totensor",
-"url":31,
+"url":32,
 "doc":"Return captured lambda function if v=None, else return tensor",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.configure_optimizers",
-"url":31,
+"url":32,
 "doc":"Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one. But in the case of GANs or similar you might have multiple. Return: Any of these 6 options. -  Single optimizer . -  List or Tuple of optimizers. -  Two lists - The first list has multiple optimizers, and the second has multiple LR schedulers (or multiple  lr_dict ). -  Dictionary , with an  \"optimizer\" key, and (optionally) a  \"lr_scheduler\" key whose value is a single LR scheduler or  lr_dict . -  Tuple of dictionaries as described above, with an optional  \"frequency\" key. -  None - Fit will run without any optimizer. The  lr_dict is a dictionary which contains the scheduler and its associated configuration. The default configuration is shown below.  code-block python lr_dict = {  REQUIRED: The scheduler instance \"scheduler\": lr_scheduler,  The unit of the scheduler's step size, could also be 'step'.  'epoch' updates the scheduler on epoch end whereas 'step'  updates it after a optimizer update. \"interval\": \"epoch\",  How many epochs/steps should pass between calls to   scheduler.step() . 1 corresponds to updating the learning  rate after every epoch/step. \"frequency\": 1,  Metric to to monitor for schedulers like  ReduceLROnPlateau \"monitor\": \"val_loss\",  If set to  True , will enforce that the value specified 'monitor'  is available when the scheduler is updated, thus stopping  training if not found. If set to  False , it will only produce a warning \"strict\": True,  If using the  LearningRateMonitor callback to monitor the  learning rate progress, this keyword can be used to specify  a custom logged name \"name\": None, } When there are schedulers in which the  .step() method is conditioned on a value, such as the :class: torch.optim.lr_scheduler.ReduceLROnPlateau scheduler, Lightning requires that the  lr_dict contains the keyword  \"monitor\" set to the metric name that the scheduler should be conditioned on.  testcode  The ReduceLROnPlateau scheduler requires a monitor def configure_optimizers(self): optimizer = Adam( .) return { \"optimizer\": optimizer, \"lr_scheduler\": { \"scheduler\": ReduceLROnPlateau(optimizer,  .), \"monitor\": \"metric_to_track\", }, }  In the case of two optimizers, only one using the ReduceLROnPlateau scheduler def configure_optimizers(self): optimizer1 = Adam( .) optimizer2 = SGD( .) scheduler1 = ReduceLROnPlateau(optimizer1,  .) scheduler2 = LambdaLR(optimizer2,  .) return ( { \"optimizer\": optimizer1, \"lr_scheduler\": { \"scheduler\": scheduler1, \"monitor\": \"metric_to_track\", }, }, {\"optimizer\": optimizer2, \"lr_scheduler\": scheduler2}, ) Metrics can be made available to monitor by simply logging it using  self.log('metric_to_track', metric_val) in your :class: ~pytorch_lightning.core.lightning.LightningModule . Note: The  frequency value specified in a dict along with the  optimizer key is an int corresponding to the number of sequential batches optimized with the specific optimizer. It should be given to none or to all of the optimizers. There is a difference between passing multiple optimizers in a list, and passing multiple optimizers in dictionaries with a frequency of 1: - In the former case, all optimizers will operate on the given batch in each optimization step. - In the latter, only one optimizer will operate on the given batch at every step. This is different from the  frequency value specified in the  lr_dict mentioned above.  code-block python def configure_optimizers(self): optimizer_one = torch.optim.SGD(self.model.parameters(), lr=0.01) optimizer_two = torch.optim.SGD(self.model.parameters(), lr=0.01) return [ {\"optimizer\": optimizer_one, \"frequency\": 5}, {\"optimizer\": optimizer_two, \"frequency\": 10}, ] In this example, the first optimizer will be used for the first 5 steps, the second optimizer for the next 10 steps and that cycle will continue. If an LR scheduler is specified for an optimizer using the  lr_scheduler key in the above dict, the scheduler will only be updated when its optimizer is being used. Examples  most cases. no learning rate scheduler def configure_optimizers(self): return Adam(self.parameters(), lr=1e-3)  multiple optimizer case (e.g.: GAN) def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) return gen_opt, dis_opt  example with learning rate schedulers def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) dis_sch = CosineAnnealing(dis_opt, T_max=10) return [gen_opt, dis_opt], [dis_sch]  example with step-based learning rate schedulers  each optimizer has its own scheduler def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) gen_sch = { 'scheduler': ExponentialLR(gen_opt, 0.99), 'interval': 'step'  called after each training step } dis_sch = CosineAnnealing(dis_opt, T_max=10)  called every epoch return [gen_opt, dis_opt], [gen_sch, dis_sch]  example with optimizer frequencies  see training procedure in  Improved Training of Wasserstein GANs , Algorithm 1  https: arxiv.org/abs/1704.00028 def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) n_critic = 5 return ( {'optimizer': dis_opt, 'frequency': n_critic}, {'optimizer': gen_opt, 'frequency': 1} ) Note: Some things to know: - Lightning calls  .backward() and  .step() on each optimizer and learning rate scheduler as needed. - If you use 16-bit precision ( precision=16 ), Lightning will automatically handle the optimizers. - If you use multiple optimizers, :meth: training_step will have an additional  optimizer_idx parameter. - If you use :class: torch.optim.LBFGS , Lightning handles the closure function automatically for you. - If you use multiple optimizers, gradients will be calculated only for the parameters of current optimizer at each training step. - If you need to control how often those optimizers step or override the default  .step() schedule, override the :meth: optimizer_step hook.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.training_step",
-"url":31,
+"url":32,
 "doc":"Here you compute and return the training loss and some additional metrics for e.g. the progress bar or logger. Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): Integer displaying index of this batch optimizer_idx (int): When using multiple optimizers, this argument will also be present. hiddens(:class: ~torch.Tensor ): Passed in if :paramref: ~pytorch_lightning.core.lightning.LightningModule.truncated_bptt_steps > 0. Return: Any of. - :class: ~torch.Tensor - The loss tensor -  dict - A dictionary. Can include any keys, but must include the key  'loss' -  None - Training will skip to the next batch. This is only for automatic optimization. This is not supported for multi-GPU or TPU, or using  DeepSpeed . In this step you'd normally do the forward pass and calculate the loss for a batch. You can also do fancier things like multiple forward passes or something model specific. Example def training_step(self, batch, batch_idx): x, y, z = batch out = self.encoder(x) loss = self.loss(out, x) return loss If you define multiple optimizers, this step will be called with an additional  optimizer_idx parameter.  code-block python  Multiple optimizers (e.g.: GANs) def training_step(self, batch, batch_idx, optimizer_idx): if optimizer_idx  0:  do training_step with encoder  . if optimizer_idx  1:  do training_step with decoder  . If you add truncated back propagation through time you will also get an additional argument with the hidden states of the previous step.  code-block python  Truncated back-propagation through time def training_step(self, batch, batch_idx, hiddens):  hiddens are the hidden states from the previous truncated backprop step  . out, hiddens = self.lstm(data, hiddens)  . return {\"loss\": loss, \"hiddens\": hiddens} Note: The loss value shown in the progress bar is smoothed (averaged) over the last values, so it differs from the actual loss returned in train/validation step.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.validation_step",
-"url":31,
+"url":32,
 "doc":"Operates on a single batch of data from the validation set. In this step you'd might generate examples or calculate anything of interest like accuracy.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): The index of this batch dataloader_idx (int): The index of the dataloader that produced this batch (only if multiple val dataloaders used) Return: - Any object or value -  None - Validation will skip to the next batch  code-block python  pseudocode of order val_outs = [] for val_batch in val_data: out = validation_step(val_batch) if defined(\"validation_step_end\"): out = validation_step_end(out) val_outs.append(out) val_outs = validation_epoch_end(val_outs)  code-block python  if you have one val dataloader: def validation_step(self, batch, batch_idx):  .  if you have multiple val dataloaders: def validation_step(self, batch, batch_idx, dataloader_idx):  . Examples  CASE 1: A single validation dataset def validation_step(self, batch, batch_idx): x, y = batch  implement your own out = self(x) loss = self.loss(out, y)  log 6 example images  or generated text . or whatever sample_imgs = x[:6] grid = torchvision.utils.make_grid(sample_imgs) self.logger.experiment.add_image('example_images', grid, 0)  calculate acc labels_hat = torch.argmax(out, dim=1) val_acc = torch.sum(y  labels_hat).item() / (len(y)  1.0)  log the outputs! self.log_dict({'val_loss': loss, 'val_acc': val_acc}) If you pass in multiple val dataloaders, :meth: validation_step will have an additional argument.  code-block python  CASE 2: multiple validation dataloaders def validation_step(self, batch, batch_idx, dataloader_idx):  dataloader_idx tells you which dataset this is.  . Note: If you don't need to validate you don't need to implement this method. Note: When the :meth: validation_step is called, the model has been put in eval mode and PyTorch gradients have been disabled. At the end of validation, the model goes back to training mode and gradients are enabled.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTracker.validation_epoch_end",
-"url":31,
+"url":32,
 "doc":"Called at the end of the validation epoch with the outputs of all validation steps.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: outputs: List of outputs you defined in :meth: validation_step , or if there are multiple dataloaders, a list containing a list of outputs for each dataloader. Return: None Note: If you didn't define a :meth: validation_step , this won't be called. Examples: With a single dataloader:  code-block python def validation_epoch_end(self, val_step_outputs): for out in val_step_outputs:  . With multiple dataloaders,  outputs will be a list of lists. The outer list contains one entry per dataloader, while the inner list contains the individual outputs of each validation step for that dataloader.  code-block python def validation_epoch_end(self, outputs): for dataloader_output_result in outputs: dataloader_outs = dataloader_output_result.dataloader_i_outputs self.log(\"final_metric\", final_value)",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap",
-"url":31,
+"url":32,
 "doc":"Video Activity detection. Args (__call__): vi [generator of  vipy.video.Scene ]: The input video to be updated in place with detections. This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__ activityiou [float]: The minimum temporal iou for activity assignment mirror [bool]: If true, encode using the mean of a video encoding and the mirrored video encoding. This is slower as it requires 2x GPU forward passes minprob [float]: The minimum probability for new activity detection trackconf [float]: The minimum object detection confidence for new tracks maxdets [int]: The maximum number of allowable detections per frame. If there are more detections per frame tha maxdets, sort them by confidence and use only the top maxdets best avgdets [int]: The number of allowable detections per frame if throttled buffered [bool]: If true, then buffer streams. This is useful for activity detection on live streams. finalized [bool, int]: If False then do not finalize(), If True finalize() only at the end, If int, then finalize every int frames. This is useful for streaming activity detection on unbounded inputs. Returns: The input video is updated in place."
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.dump_patches",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.training",
-"url":31,
+"url":32,
 "doc":""
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.forward",
-"url":31,
+"url":32,
 "doc":"Overload forward for multi-gpu batch. Don't use torch DataParallel!",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.lrt",
-"url":31,
+"url":32,
 "doc":"top-k with likelihood ratio test with background null hypothesis",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.softmax",
-"url":31,
+"url":32,
 "doc":"Return a list of lists [(class_label, float(softmax), float(logit)  . ] for all classes and batches",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.finalize",
-"url":31,
+"url":32,
 "doc":"In place filtering of video to finalize",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.topk",
-"url":31,
+"url":32,
 "doc":"Return the top-k classes for a 3 second activity proposal along with framewise ground truth",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.totensor",
-"url":31,
+"url":32,
 "doc":"Return captured lambda function if v=None, else return tensor",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.configure_optimizers",
-"url":31,
+"url":32,
 "doc":"Choose what optimizers and learning-rate schedulers to use in your optimization. Normally you'd need one. But in the case of GANs or similar you might have multiple. Return: Any of these 6 options. -  Single optimizer . -  List or Tuple of optimizers. -  Two lists - The first list has multiple optimizers, and the second has multiple LR schedulers (or multiple  lr_dict ). -  Dictionary , with an  \"optimizer\" key, and (optionally) a  \"lr_scheduler\" key whose value is a single LR scheduler or  lr_dict . -  Tuple of dictionaries as described above, with an optional  \"frequency\" key. -  None - Fit will run without any optimizer. The  lr_dict is a dictionary which contains the scheduler and its associated configuration. The default configuration is shown below.  code-block python lr_dict = {  REQUIRED: The scheduler instance \"scheduler\": lr_scheduler,  The unit of the scheduler's step size, could also be 'step'.  'epoch' updates the scheduler on epoch end whereas 'step'  updates it after a optimizer update. \"interval\": \"epoch\",  How many epochs/steps should pass between calls to   scheduler.step() . 1 corresponds to updating the learning  rate after every epoch/step. \"frequency\": 1,  Metric to to monitor for schedulers like  ReduceLROnPlateau \"monitor\": \"val_loss\",  If set to  True , will enforce that the value specified 'monitor'  is available when the scheduler is updated, thus stopping  training if not found. If set to  False , it will only produce a warning \"strict\": True,  If using the  LearningRateMonitor callback to monitor the  learning rate progress, this keyword can be used to specify  a custom logged name \"name\": None, } When there are schedulers in which the  .step() method is conditioned on a value, such as the :class: torch.optim.lr_scheduler.ReduceLROnPlateau scheduler, Lightning requires that the  lr_dict contains the keyword  \"monitor\" set to the metric name that the scheduler should be conditioned on.  testcode  The ReduceLROnPlateau scheduler requires a monitor def configure_optimizers(self): optimizer = Adam( .) return { \"optimizer\": optimizer, \"lr_scheduler\": { \"scheduler\": ReduceLROnPlateau(optimizer,  .), \"monitor\": \"metric_to_track\", }, }  In the case of two optimizers, only one using the ReduceLROnPlateau scheduler def configure_optimizers(self): optimizer1 = Adam( .) optimizer2 = SGD( .) scheduler1 = ReduceLROnPlateau(optimizer1,  .) scheduler2 = LambdaLR(optimizer2,  .) return ( { \"optimizer\": optimizer1, \"lr_scheduler\": { \"scheduler\": scheduler1, \"monitor\": \"metric_to_track\", }, }, {\"optimizer\": optimizer2, \"lr_scheduler\": scheduler2}, ) Metrics can be made available to monitor by simply logging it using  self.log('metric_to_track', metric_val) in your :class: ~pytorch_lightning.core.lightning.LightningModule . Note: The  frequency value specified in a dict along with the  optimizer key is an int corresponding to the number of sequential batches optimized with the specific optimizer. It should be given to none or to all of the optimizers. There is a difference between passing multiple optimizers in a list, and passing multiple optimizers in dictionaries with a frequency of 1: - In the former case, all optimizers will operate on the given batch in each optimization step. - In the latter, only one optimizer will operate on the given batch at every step. This is different from the  frequency value specified in the  lr_dict mentioned above.  code-block python def configure_optimizers(self): optimizer_one = torch.optim.SGD(self.model.parameters(), lr=0.01) optimizer_two = torch.optim.SGD(self.model.parameters(), lr=0.01) return [ {\"optimizer\": optimizer_one, \"frequency\": 5}, {\"optimizer\": optimizer_two, \"frequency\": 10}, ] In this example, the first optimizer will be used for the first 5 steps, the second optimizer for the next 10 steps and that cycle will continue. If an LR scheduler is specified for an optimizer using the  lr_scheduler key in the above dict, the scheduler will only be updated when its optimizer is being used. Examples  most cases. no learning rate scheduler def configure_optimizers(self): return Adam(self.parameters(), lr=1e-3)  multiple optimizer case (e.g.: GAN) def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) return gen_opt, dis_opt  example with learning rate schedulers def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) dis_sch = CosineAnnealing(dis_opt, T_max=10) return [gen_opt, dis_opt], [dis_sch]  example with step-based learning rate schedulers  each optimizer has its own scheduler def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) gen_sch = { 'scheduler': ExponentialLR(gen_opt, 0.99), 'interval': 'step'  called after each training step } dis_sch = CosineAnnealing(dis_opt, T_max=10)  called every epoch return [gen_opt, dis_opt], [gen_sch, dis_sch]  example with optimizer frequencies  see training procedure in  Improved Training of Wasserstein GANs , Algorithm 1  https: arxiv.org/abs/1704.00028 def configure_optimizers(self): gen_opt = Adam(self.model_gen.parameters(), lr=0.01) dis_opt = Adam(self.model_dis.parameters(), lr=0.02) n_critic = 5 return ( {'optimizer': dis_opt, 'frequency': n_critic}, {'optimizer': gen_opt, 'frequency': 1} ) Note: Some things to know: - Lightning calls  .backward() and  .step() on each optimizer and learning rate scheduler as needed. - If you use 16-bit precision ( precision=16 ), Lightning will automatically handle the optimizers. - If you use multiple optimizers, :meth: training_step will have an additional  optimizer_idx parameter. - If you use :class: torch.optim.LBFGS , Lightning handles the closure function automatically for you. - If you use multiple optimizers, gradients will be calculated only for the parameters of current optimizer at each training step. - If you need to control how often those optimizers step or override the default  .step() schedule, override the :meth: optimizer_step hook.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.training_step",
-"url":31,
+"url":32,
 "doc":"Here you compute and return the training loss and some additional metrics for e.g. the progress bar or logger. Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): Integer displaying index of this batch optimizer_idx (int): When using multiple optimizers, this argument will also be present. hiddens(:class: ~torch.Tensor ): Passed in if :paramref: ~pytorch_lightning.core.lightning.LightningModule.truncated_bptt_steps > 0. Return: Any of. - :class: ~torch.Tensor - The loss tensor -  dict - A dictionary. Can include any keys, but must include the key  'loss' -  None - Training will skip to the next batch. This is only for automatic optimization. This is not supported for multi-GPU or TPU, or using  DeepSpeed . In this step you'd normally do the forward pass and calculate the loss for a batch. You can also do fancier things like multiple forward passes or something model specific. Example def training_step(self, batch, batch_idx): x, y, z = batch out = self.encoder(x) loss = self.loss(out, x) return loss If you define multiple optimizers, this step will be called with an additional  optimizer_idx parameter.  code-block python  Multiple optimizers (e.g.: GANs) def training_step(self, batch, batch_idx, optimizer_idx): if optimizer_idx  0:  do training_step with encoder  . if optimizer_idx  1:  do training_step with decoder  . If you add truncated back propagation through time you will also get an additional argument with the hidden states of the previous step.  code-block python  Truncated back-propagation through time def training_step(self, batch, batch_idx, hiddens):  hiddens are the hidden states from the previous truncated backprop step  . out, hiddens = self.lstm(data, hiddens)  . return {\"loss\": loss, \"hiddens\": hiddens} Note: The loss value shown in the progress bar is smoothed (averaged) over the last values, so it differs from the actual loss returned in train/validation step.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.validation_step",
-"url":31,
+"url":32,
 "doc":"Operates on a single batch of data from the validation set. In this step you'd might generate examples or calculate anything of interest like accuracy.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: batch (:class: ~torch.Tensor | (:class: ~torch.Tensor ,  .) | [:class: ~torch.Tensor ,  .]): The output of your :class: ~torch.utils.data.DataLoader . A tensor, tuple or list. batch_idx (int): The index of this batch dataloader_idx (int): The index of the dataloader that produced this batch (only if multiple val dataloaders used) Return: - Any object or value -  None - Validation will skip to the next batch  code-block python  pseudocode of order val_outs = [] for val_batch in val_data: out = validation_step(val_batch) if defined(\"validation_step_end\"): out = validation_step_end(out) val_outs.append(out) val_outs = validation_epoch_end(val_outs)  code-block python  if you have one val dataloader: def validation_step(self, batch, batch_idx):  .  if you have multiple val dataloaders: def validation_step(self, batch, batch_idx, dataloader_idx):  . Examples  CASE 1: A single validation dataset def validation_step(self, batch, batch_idx): x, y = batch  implement your own out = self(x) loss = self.loss(out, y)  log 6 example images  or generated text . or whatever sample_imgs = x[:6] grid = torchvision.utils.make_grid(sample_imgs) self.logger.experiment.add_image('example_images', grid, 0)  calculate acc labels_hat = torch.argmax(out, dim=1) val_acc = torch.sum(y  labels_hat).item() / (len(y)  1.0)  log the outputs! self.log_dict({'val_loss': loss, 'val_acc': val_acc}) If you pass in multiple val dataloaders, :meth: validation_step will have an additional argument.  code-block python  CASE 2: multiple validation dataloaders def validation_step(self, batch, batch_idx, dataloader_idx):  dataloader_idx tells you which dataset this is.  . Note: If you don't need to validate you don't need to implement this method. Note: When the :meth: validation_step is called, the model has been put in eval mode and PyTorch gradients have been disabled. At the end of validation, the model goes back to training mode and gradients are enabled.",
 "func":1
 },
 {
 "ref":"heyvi.recognition.ActivityTrackerCap.validation_epoch_end",
-"url":31,
+"url":32,
 "doc":"Called at the end of the validation epoch with the outputs of all validation steps.  code-block python  the pseudocode for these calls val_outs = [] for val_batch in val_data: out = validation_step(val_batch) val_outs.append(out) validation_epoch_end(val_outs) Args: outputs: List of outputs you defined in :meth: validation_step , or if there are multiple dataloaders, a list containing a list of outputs for each dataloader. Return: None Note: If you didn't define a :meth: validation_step , this won't be called. Examples: With a single dataloader:  code-block python def validation_epoch_end(self, val_step_outputs): for out in val_step_outputs:  . With multiple dataloaders,  outputs will be a list of lists. The outer list contains one entry per dataloader, while the inner list contains the individual outputs of each validation step for that dataloader.  code-block python def validation_epoch_end(self, outputs): for dataloader_output_result in outputs: dataloader_outs = dataloader_output_result.dataloader_i_outputs self.log(\"final_metric\", final_value)",
 "func":1
 },
 {
 "ref":"heyvi.util",
-"url":32,
+"url":33,
 "doc":""
 },
 {
 "ref":"heyvi.util.timestamp",
-"url":32,
+"url":33,
 "doc":"Datetime stamp in eastern timezone with microsecond resolution",
 "func":1
 },
 {
 "ref":"heyvi.detection",
-"url":33,
+"url":34,
 "doc":""
 },
 {
 "ref":"heyvi.detection.TorchNet",
-"url":33,
+"url":34,
 "doc":""
 },
 {
 "ref":"heyvi.detection.TorchNet.gpu",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.TorchNet.cpu",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.TorchNet.iscpu",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.TorchNet.isgpu",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.TorchNet.batchsize",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.FaceDetector",
-"url":33,
+"url":34,
 "doc":"Faster R-CNN based face detector"
 },
 {
 "ref":"heyvi.detection.FaceDetector.batchsize",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.Yolov5",
-"url":33,
+"url":34,
 "doc":"Yolov5 based object detector >>> d = heyvi.detection.Detector() >>> d(vipy.image.vehicles( .show()"
 },
 {
 "ref":"heyvi.detection.Yolov5.classlist",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.Yolov3",
-"url":33,
+"url":34,
 "doc":"Yolov3 based object detector >>> d = heyvi.detection.Detector() >>> d(vipy.image.vehicles( .show()"
 },
 {
 "ref":"heyvi.detection.Yolov3.classlist",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.ObjectDetector",
-"url":33,
+"url":34,
 "doc":"Default object detector"
 },
 {
 "ref":"heyvi.detection.MultiscaleObjectDetector",
-"url":33,
+"url":34,
 "doc":"Given a list of images, break each one into a set of overlapping tiles, and ObjectDetector() on each, then recombining detections"
 },
 {
 "ref":"heyvi.detection.VideoDetector",
-"url":33,
+"url":34,
 "doc":"Iterate ObjectDetector() over each frame of video, yielding the detected frame"
 },
 {
 "ref":"heyvi.detection.MultiscaleVideoDetector",
-"url":33,
+"url":34,
 "doc":"Given a list of images, break each one into a set of overlapping tiles, and ObjectDetector() on each, then recombining detections"
 },
 {
 "ref":"heyvi.detection.VideoTracker",
-"url":33,
+"url":34,
 "doc":"Default object detector"
 },
 {
 "ref":"heyvi.detection.VideoTracker.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 },
 {
 "ref":"heyvi.detection.FaceTracker",
-"url":33,
+"url":34,
 "doc":"Faster R-CNN based face detector"
 },
 {
 "ref":"heyvi.detection.FaceTracker.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 },
 {
 "ref":"heyvi.detection.MultiscaleVideoTracker",
-"url":33,
+"url":34,
 "doc":"MultiscaleVideoTracker() class Args: minconf [float]: The minimum confidence of an object detection to be considered for tracking miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment maxhistory [int]: The maximum frame history lookback for assignment of a detection with a broken track smoothing [str]: Unused objects [list]: The list of allowable objects for tracking as supported by  heyvi.detection.MultiscaleObjectDetector . trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track verbose [bool]: Logging verbosity gpu [list]: List of GPU indexes to use batchsize [int]: The GPU batchsize weightfile [str]: The modelfile for the object detector overlapfrac [int]: FIXME, this is a legacy parameter detbatchsize [int]: The detection batchsize per image gate [int]: The maximum distance in pixels around a detection to search for candidate tracks"
 },
 {
 "ref":"heyvi.detection.MultiscaleVideoTracker.stream",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.MultiscaleVideoTracker.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 },
 {
 "ref":"heyvi.detection.WeakAnnotationTracker",
-"url":33,
-"doc":"heyvi.detection.WeakAnnotationTracker() Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking. Approach: - THe input video should have weak tracks provided by live annotators with class names that intersect  heyvi.detection.MultiscaleVideoTracker . - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording. - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal. - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking. - The tracker compbines these rescored detections as in the VideoTracker. - When done, each track is assigned to a proposal. Usage: >>> T = heyvi.detection.WeakAnnotationTracker() >>> v = vipy.video.Scene( .) >>> vt = T.track(v) >>> vm = vt.combine(v.trackmap(lambda t: t.category('weak annotation' ) - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v. - All track and activities IDs are mapped appropriately from the input video. - The combined video vm has both the weak annotation and the refined tracks."
+"url":34,
+"doc":"heyvi.detection.WeakAnnotationTracker() Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking. Approach: - The input video should have weak tracks provided by live annotators with class names that intersect  heyvi.detection.MultiscaleVideoTracker . - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording. - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal. - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking. - The tracker compbines these rescored detections as in the VideoTracker. - When done, each track is assigned to a proposal. Usage: Batch annotation tracker:   T = heyvi.detection.WeakAnnotationTracker() v = vipy.video.Scene( .)  contains weak annotations vt = T.track(v)  refined proposals vm = vt.combine(v.trackmap(lambda t: t.category('weak annotation' )   Streaming annotation tracker:   T = heyvi.detection.WeakAnnotationTracker() v = vipy.video.Scene( .)  contains weak annotations for vt in T(v): print(vt)    note - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v. - All track and activities IDs are mapped appropriately from the input video. - The combined video vm has both the weak annotation and the refined tracks."
 },
 {
 "ref":"heyvi.detection.WeakAnnotationTracker.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 },
 {
 "ref":"heyvi.detection.WeakAnnotationFaceTracker",
-"url":33,
-"doc":"See  heyvi.detection.WeakAnnotationTracker "
+"url":34,
+"doc":"heyvi.detection.WeakAnnotationFaceTracker() Given a weak annotation of an person, face or head bounding box from a human annotator, refine this weak annotation into a tight box around the face using object detection proposals and tracking. Approach: - The input video should have weak tracks provided by live annotators with class names that are in ['person', 'face', 'head'] - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording. - This function runs a low confidence face detector and rescores face detection confidences based on overlap with the proposal. - Detections that maximally overlap the proposal with high detection confidence are proritized for track assignment. - The tracker compbines these rescored detections as in the VideoTracker. - When done, each track is assigned to a proposal. See also:  heyvi.detection.WeakAnnotationTracker "
 },
 {
 "ref":"heyvi.detection.WeakAnnotationFaceTracker.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 },
 {
 "ref":"heyvi.detection.ActorAssociation",
-"url":33,
+"url":34,
 "doc":"heyvi.detection.VideoAssociation() class Select the best object track of the target class associated with the primary actor class by gated spatial IOU and distance. Add the best object track to the scene and associate with all activities performed by the primary actor.  warning This is scheduled for deprecation, as the gating is unreliable. This should be replaced by the WeakAnnotationTracker for a target class."
 },
 {
 "ref":"heyvi.detection.ActorAssociation.isallowable",
-"url":33,
+"url":34,
 "doc":"",
 "func":1
 },
 {
 "ref":"heyvi.detection.ActorAssociation.track",
-"url":33,
+"url":34,
 "doc":"Batch tracking",
 "func":1
 }
