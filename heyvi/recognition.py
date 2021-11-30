@@ -460,14 +460,20 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         return f(v) if v is not None else f
     
     def calibrate(self, valset):
+        import vipy.torch
+        import vipy.dataset
+        import json
         from netcal.scaling import LogisticCalibration, TemperatureScaling
-
-        x_logit = [(self.forward(x), y) for (x,y) in valset]
-        (logits, ground_truth) = (np.vstack([r for x in outputs for (r,c) in zip(np.array(x['logit'].detach().cpu()), x['classindex']) if c is not None]), np.array([y for x in outputs for y in x['classindex'] if y is not None]))
-
+        assert isinstance(valset, vipy.dataset.Dataset)
+        
+        valtensor = valset.to_torch(self.totensor(validation=True))        
+        f_label_to_classindex = lambda y: self._class_to_index[max(vipy.util.flatlist(y), key=vipy.util.flatlist(y).count)] if len(vipy.util.flatlist(y))>0 else None   # most frequent
+        (logits, ground_truth) = zip(*[(self.forward(x.unsqueeze(0)), f_label_to_classindex(json.loads(y))) for (x,y) in valtensor if f_label_to_classindex(json.loads(y)) is not None])
+        (logits, ground_truth) = (torch.stack(logits).squeeze().detach().numpy(), np.array(ground_truth))
+        
         self._calibration_multiclass = TemperatureScaling()
         self._calibration_multiclass.fit(np.array(F.softmax(torch.from_numpy(logits), dim=1)), ground_truth)
-        self._calibration_binary = {k:(LogisticCalibration(), float(np.mean(logits[:,k])))  for k in sorted(self.class_to_index().values())}
+        self._calibration_binary = {k:(LogisticCalibration(), float(np.mean(logits[:,k]))) for k in sorted(self.class_to_index().values())}
         for (k,(s,m)) in self._calibration_binary.items():
             (binary_confidences, binary_ground_truth) = (np.array(torch.sigmoid(torch.from_numpy(logits[:,k]-m))), np.array([1 if y==k else 0 for y in ground_truth]))
             if np.any(binary_ground_truth):
@@ -480,8 +486,8 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         assert hasattr(self, '_calibration_multiclass') and self._calibration_multiclass is not None 
         assert hasattr(self, '_calibration_binary') and self._calibration_binary is not None 
         xn = np.array(x_logits.detach().cpu())
-        return torch.multiply(torch.from_numpy(self._calibration_multiclass(np.array(F.softmax(x_logits, dim=1).detach().cpu()))),
-                              torch.from_numpy(np.hstack([(s.transform(np.array(F.sigmoid(x_logits[:,k]-m).detach().cpu())) if s is not None else np.zeros_like(xn[:,k])).reshape(xn.shape[0],1) for (k,(s,m)) in self._calibration_binary.items()])))
+        return torch.multiply(torch.from_numpy(self._calibration_multiclass.transform(np.array(F.softmax(x_logits, dim=1).detach().cpu()))),
+                              torch.from_numpy(np.hstack([(s.transform(np.array(torch.sigmoid(x_logits[:,k]-m).detach().cpu())) if s is not None else np.zeros_like(xn[:,k])).reshape(xn.shape[0],1) for (k,(s,m)) in self._calibration_binary.items()])))
 
 
 class ActivityTracker(PIP_370k):
