@@ -32,8 +32,21 @@
 <li>Live streaming of annotated videos to youtube live</li>
 <li>Visual AI from RTSP cameras</li>
 </ul>
-<h2 id="environment-variables">Environment variables</h2>
-<p>The following environment varibles may be set by the client:</p>
+<h1 id="getting-started">Getting Started</h1>
+<p>Create a video from a file and track the objects, then create an annotation visualization</p>
+<pre><code class="language-python">v = vipy.video.Scene(filename='/path/to/video.mp4').framerate(5)
+T = heyvi.system.Tracker()
+vo = T(v)
+vo.annotate('/path/to/annotation.mp4')
+</code></pre>
+<p>Create a default RTSP camera and stream the privacy preserving annotated video (e.g. pixelated bounding boxes with captions) to a YouTube live stream.</p>
+<pre><code class="language-python">v = heyvi.sensor.rtsp().framerate(5)
+T = heyvi.system.Tracker()
+with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s:
+     T(v, frame_callback=lambda im: s(im.pixelize().annotate()))
+</code></pre>
+<h2 id="customization">Customization</h2>
+<p>The following environment varibles may be set by the client to specify live camera streams</p>
 <p>VIPY_RTSP_URL='rtsp://user@password:127.0.0.1'
 <br>
 VIPY_RTSP_URL_0='rtsp://user@password:127.0.0.1'
@@ -44,7 +57,8 @@ VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx'
 <br>
 VIPY_CACHE='/home/username/.vipy'
 </p>
-<p>Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in <code>heyvi.sensors.cameralist</code>, and VIPY_RTSP_URL refers to the default RTSP camera in <code><a title="heyvi.sensor.rtsp" href="sensor.html#heyvi.sensor.rtsp">rtsp()</a></code>.</p>
+<p>Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are returned in <code><a title="heyvi.sensor.cameralist" href="sensor.html#heyvi.sensor.cameralist">cameralist()</a></code>, and VIPY_RTSP_URL refers to the default RTSP camera in <code><a title="heyvi.sensor.rtsp" href="sensor.html#heyvi.sensor.rtsp">rtsp()</a></code>.</p>
+<p>Please refer to the <a href="https://visym.github.io/vipy">vipy</a> documentation for additional environment variables.</p>
 <h2 id="versioning">Versioning</h2>
 <p>To determine what heyvi version you are running you can use:</p>
 <pre><code class="language-python-repl">&gt;&gt;&gt; heyvi.__version__
@@ -55,7 +69,7 @@ VIPY_CACHE='/home/username/.vipy'
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/f58a7486224f0bd7bab24a23abe8b2b760043cc1/heyvi/__init__.py#L1-L50" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/__init__.py#L1-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">&#34;&#34;&#34;
 
@@ -71,9 +85,29 @@ HEYVI provides:
 * Visual AI from RTSP cameras
 
 
-## Environment variables
+# Getting Started
 
-The following environment varibles may be set by the client:
+Create a video from a file and track the objects, then create an annotation visualization
+
+```python
+v = vipy.video.Scene(filename=&#39;/path/to/video.mp4&#39;).framerate(5)
+T = heyvi.system.Tracker()
+vo = T(v)
+vo.annotate(&#39;/path/to/annotation.mp4&#39;)
+```
+
+Create a default RTSP camera and stream the privacy preserving annotated video (e.g. pixelated bounding boxes with captions) to a YouTube live stream.
+
+```python
+v = heyvi.sensor.rtsp().framerate(5)
+T = heyvi.system.Tracker()
+with heyvi.system.YoutubeLive(fps=5, encoder=&#39;480p&#39;) as s:
+     T(v, frame_callback=lambda im: s(im.pixelize().annotate()))
+```
+
+## Customization
+
+The following environment varibles may be set by the client to specify live camera streams
 
 VIPY_RTSP_URL=&#39;rtsp://user@password:127.0.0.1&#39;    
 VIPY_RTSP_URL_0=&#39;rtsp://user@password:127.0.0.1&#39;    
@@ -81,7 +115,9 @@ VIPY_RTSP_URL_1=&#39;rtsp://user@password:127.0.0.2&#39;
 VIPY_YOUTUBE_STREAMKEY=&#39;xxxx-xxxx-xxxx-xxxx-xxxx&#39;    
 VIPY_CACHE=&#39;/home/username/.vipy&#39;    
 
-Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in `heyvi.sensors.cameralist`, and VIPY_RTSP_URL refers to the default RTSP camera in `heyvi.sensor.rtsp`.
+Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are returned in `heyvi.sensor.cameralist`, and VIPY_RTSP_URL refers to the default RTSP camera in `heyvi.sensor.rtsp`.
+
+Please refer to the [vipy](https://visym.github.io/vipy) documentation for additional environment variables.
 
 
 ## Versioning
@@ -90,7 +126,6 @@ To determine what heyvi version you are running you can use:
 
 &gt;&gt;&gt; heyvi.__version__
 &gt;&gt;&gt; heyvi.version.is_at_least(&#39;0.0.6&#39;) 
-
 
 # Contact
 
@@ -211,8 +246,9 @@ setTimeout(() => input.focus(), 100);
 <h1>Index</h1>
 <div class="toc">
 <ul>
-<li><a href="#hey-vi">"Hey Vi!"</a><ul>
-<li><a href="#environment-variables">Environment variables</a></li>
+<li><a href="#hey-vi">"Hey Vi!"</a></li>
+<li><a href="#getting-started">Getting Started</a><ul>
+<li><a href="#customization">Customization</a></li>
 <li><a href="#versioning">Versioning</a></li>
 </ul>
 </li>

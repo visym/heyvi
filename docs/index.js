@@ -39,7 +39,7 @@ INDEX=[
 {
 "ref":"heyvi",
 "url":0,
-"doc":" \"Hey Vi!\" HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos. HEYVI provides:  Real time activity detection of the [MEVA activity classes](https: mevadata.org)  Real time visual object tracking in long duration videos  Live streaming of annotated videos to youtube live  Visual AI from RTSP cameras  Environment variables The following environment varibles may be set by the client: VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_0='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_1='rtsp: user@password:127.0.0.2' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy' Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are specified in  heyvi.sensors.cameralist , and VIPY_RTSP_URL refers to the default RTSP camera in  heyvi.sensor.rtsp .  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
+"doc":" \"Hey Vi!\" HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos. HEYVI provides:  Real time activity detection of the [MEVA activity classes](https: mevadata.org)  Real time visual object tracking in long duration videos  Live streaming of annotated videos to youtube live  Visual AI from RTSP cameras  Getting Started Create a video from a file and track the objects, then create an annotation visualization   v = vipy.video.Scene(filename='/path/to/video.mp4').framerate(5) T = heyvi.system.Tracker() vo = T(v) vo.annotate('/path/to/annotation.mp4')   Create a default RTSP camera and stream the privacy preserving annotated video (e.g. pixelated bounding boxes with captions) to a YouTube live stream.   v = heyvi.sensor.rtsp().framerate(5) T = heyvi.system.Tracker() with heyvi.system.YoutubeLive(fps=5, encoder='480p') as s: T(v, frame_callback=lambda im: s(im.pixelize().annotate( )    Customization The following environment varibles may be set by the client to specify live camera streams VIPY_RTSP_URL='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_0='rtsp: user@password:127.0.0.1' VIPY_RTSP_URL_1='rtsp: user@password:127.0.0.2' VIPY_YOUTUBE_STREAMKEY='xxxx-xxxx-xxxx-xxxx-xxxx' VIPY_CACHE='/home/username/.vipy' Where the environment variables VIPY_RTSP_URL_N are the list of cameras that are returned in  heyvi.sensor.cameralist , and VIPY_RTSP_URL refers to the default RTSP camera in  heyvi.sensor.rtsp . Please refer to the [vipy](https: visym.github.io/vipy) documentation for additional environment variables.  Versioning To determine what heyvi version you are running you can use: >>> heyvi.__version__ >>> heyvi.version.is_at_least('0.0.6')  Contact Visym Labs  "
 },
 {
 "ref":"heyvi.sensor",
@@ -53,9 +53,15 @@ INDEX=[
 "func":1
 },
 {
+"ref":"heyvi.sensor.camera",
+"url":1,
+"doc":"Return RSTP camera with index n in cameralist, or the default RTSP camera if None",
+"func":1
+},
+{
 "ref":"heyvi.sensor.cameralist",
 "url":1,
-"doc":"Return all online RTSP cameras set up on the current network. This requires setting environment variables: VIPY_RTSP_URL_0='rtsp: user:passwd@ip.addr.0' VIPY_RTSP_URL_1='rtsp: user:passwd@ip.addr.1' VIPY_RTSP_URL_2='rtsp: user:passwd@ip.addr.2' Args: online [bool]: If True, return only those cameras that are online. If a camera is offline return None in that camera index. If false, return all cameras",
+"doc":"Return all online RTSP cameras set up on the current network. This requires setting environment variables: VIPY_RTSP_URL_0='rtsp: user:passwd@ip.addr.0' VIPY_RTSP_URL_1='rtsp: user:passwd@ip.addr.1' VIPY_RTSP_URL_2='rtsp: user:passwd@ip.addr.2' Args: online: [bool]: If True, return only those cameras that are online. If a camera is offline return None in that camera index. If false, return all cameras specified by the environment variables.",
 "func":1
 },
 {
@@ -2537,7 +2543,7 @@ INDEX=[
 {
 "ref":"heyvi.detection.MultiscaleVideoTracker",
 "url":34,
-"doc":"MultiscaleVideoTracker() class Args: minconf [float]: The minimum confidence of an object detection to be considered for tracking miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment maxhistory [int]: The maximum frame history lookback for assignment of a detection with a broken track smoothing [str]: Unused objects [list]: The list of allowable objects for tracking as supported by  heyvi.detection.MultiscaleObjectDetector . trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track verbose [bool]: Logging verbosity gpu [list]: List of GPU indexes to use batchsize [int]: The GPU batchsize weightfile [str]: The modelfile for the object detector overlapfrac [int]: FIXME, this is a legacy parameter detbatchsize [int]: The detection batchsize per image gate [int]: The maximum distance in pixels around a detection to search for candidate tracks"
+"doc":"MultiscaleVideoTracker() class Args: minconf: [float]: The minimum confidence of an object detection to be considered for tracking miniou: [float]: The minimum IoU of an object detection with a track to be considered for assignment maxhistory: [int]: The maximum frame history lookback for assignment of a detection with a broken track smoothing: [str]: Unused objects: [list]: The list of allowable objects for tracking as supported by  heyvi.detection.MultiscaleObjectDetector . trackconf: [float]: The minimum confidence of an unassigned detection to spawn a new track verbose: [bool]: Logging verbosity gpu: [list]: List of GPU indexes to use batchsize: [int]: The GPU batchsize weightfile: [str]: The modelfile for the object detector overlapfrac: [int]: FIXME, this is a legacy parameter detbatchsize: [int]: The detection batchsize per image gate: [int]: The maximum distance in pixels around a detection to search for candidate tracks"
 },
 {
 "ref":"heyvi.detection.MultiscaleVideoTracker.stream",
