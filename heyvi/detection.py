@@ -358,19 +358,20 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
     """MultiscaleVideoTracker() class
 
     Args:
-        minconf [float]: The minimum confidence of an object detection to be considered for tracking
-        miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment
-        maxhistory [int]:  The maximum frame history lookback for assignment of a detection with a broken track
-        smoothing [str]:  Unused
-        objects [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
-        trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track
-        verbose [bool]:  Logging verbosity
-        gpu [list]: List of GPU indexes to use
-        batchsize [int]:  The GPU batchsize
-        weightfile [str]: The modelfile for the object detector
-        overlapfrac [int]: FIXME, this is a legacy parameter
-        detbatchsize [int]:  The detection batchsize per image
-        gate [int]:  The maximum distance in pixels around a detection to search for candidate tracks
+
+        minconf: [float]: The minimum confidence of an object detection to be considered for tracking
+        miniou: [float]: The minimum IoU of an object detection with a track to be considered for assignment
+        maxhistory: [int]:  The maximum frame history lookback for assignment of a detection with a broken track
+        smoothing: [str]:  Unused
+        objects: [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
+        trackconf: [float]: The minimum confidence of an unassigned detection to spawn a new track
+        verbose: [bool]:  Logging verbosity
+        gpu: [list]: List of GPU indexes to use
+        batchsize: [int]:  The GPU batchsize
+        weightfile: [str]: The modelfile for the object detector
+        overlapfrac: [int]: FIXME, this is a legacy parameter
+        detbatchsize: [int]:  The detection batchsize per image
+        gate: [int]:  The maximum distance in pixels around a detection to search for candidate tracks
 
     """
 
@@ -393,7 +394,7 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         """Yield vipy.video.Scene(), an incremental tracked result for each frame.
         
             Args:
-                rescore [callable]: Takes in a single frame with objects and a frame index, and rescores confidences.  Useful for rescoring detections prior to tracking using prior or out-of-band information.  
+                rescore: [callable]: Takes in a single frame with objects and a frame index, and rescores confidences.  Useful for rescoring detections prior to tracking using prior or out-of-band information.  
         """
         assert isinstance(vi, vipy.video.Video), "Invalid input"
         assert rescore is None or callable(rescore), "Invalid input"        
@@ -445,7 +446,7 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
     v = vipy.video.Scene(...)  # contains weak annotations
     vt = T.track(v)   # refined proposals
     vm = vt.combine(v.trackmap(lambda t: t.category('weak annotation')))
-    ````
+    ```
 
     Streaming annotation tracker:
 
@@ -454,7 +455,7 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
     v = vipy.video.Scene(...)  # contains weak annotations
     for vt in T(v):
         print(vt)
-    ````
+    ```
 
     .. note::
         - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
