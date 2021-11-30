@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>heyvi.detection API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L0-L645" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L1-L541" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -366,13 +366,14 @@ class VideoTracker(ObjectDetector):
 
 
 class FaceTracker(FaceDetector):
-    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05):
-        (f) = (super().__call__)
+    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05, rescore=None):
+        (f, f_rescore) = (super().__call__, rescore if (rescore is not None and callable(rescore)) else (lambda im,k: im))
         assert isinstance(v, vipy.video.Video), &#34;Invalid input&#34;
-        vc = v.clone().clear()  
+        vc = v.clone()  
         for (k, vb) in enumerate(vc.stream().batch(self.batchsize())):
             for (j, im) in enumerate([f(im) for im in vb.framelist()]):
-                yield vc.assign(k*self.batchsize()+j, im.clone().objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
+                frameindex = k*self.batchsize()+j
+                yield vc.assign(frameindex, f_rescore(im.clone(), frameindex).objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
 
     def track(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False):
         &#34;&#34;&#34;Batch tracking&#34;&#34;&#34;
@@ -383,7 +384,24 @@ class FaceTracker(FaceDetector):
     
     
 class MultiscaleVideoTracker(MultiscaleObjectDetector):
-    &#34;&#34;&#34;MultiscaleVideoTracker() class&#34;&#34;&#34;
+    &#34;&#34;&#34;MultiscaleVideoTracker() class
+
+    Args:
+        minconf [float]: The minimum confidence of an object detection to be considered for tracking
+        miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment
+        maxhistory [int]:  The maximum frame history lookback for assignment of a detection with a broken track
+        smoothing [str]:  Unused
+        objects [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
+        trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track
+        verbose [bool]:  Logging verbosity
+        gpu [list]: List of GPU indexes to use
+        batchsize [int]:  The GPU batchsize
+        weightfile [str]: The modelfile for the object detector
+        overlapfrac [int]: FIXME, this is a legacy parameter
+        detbatchsize [int]:  The detection batchsize per image
+        gate [int]:  The maximum distance in pixels around a detection to search for candidate tracks
+
+    &#34;&#34;&#34;
 
 
     def __init__(self, minconf=0.05, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.2, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=6, detbatchsize=None, gate=64):
@@ -400,18 +418,24 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         self._detbatchsize = detbatchsize if detbatchsize is not None else self.batchsize()
         self._gate = gate
 
-    def _track(self, vi, stride=1, continuous=False, buffered=True):
+    def _track(self, vi, stride=1, continuous=False, buffered=True, rescore=None):
         &#34;&#34;&#34;Yield vipy.video.Scene(), an incremental tracked result for each frame.
+        
+            Args:
+                rescore [callable]: Takes in a single frame with objects and a frame index, and rescores confidences.  Useful for rescoring detections prior to tracking using prior or out-of-band information.  
         &#34;&#34;&#34;
         assert isinstance(vi, vipy.video.Video), &#34;Invalid input&#34;
+        assert rescore is None or callable(rescore), &#34;Invalid input&#34;        
 
         (det, n, k) = (super().__call__, self._mindim, 0)
+        rescore = (lambda x,k: x) if rescore is None else rescore
         for (k,vb) in enumerate(vi.stream(buffered=buffered).batch(self._detbatchsize)):
             framelist = vb.framelist()
             for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
                 for i in range(j, j+stride):                    
                     if i &lt; len(framelist):
-                        yield (vi.assign(frame=k*self._detbatchsize+i, dets=im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
+                        frameindex = k*self._detbatchsize+i
+                        yield (vi.assign(frame=frameindex, dets=rescore(im, frameindex).objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
                             
     def __call__(self, vi, stride=1, continuous=False, buffered=True):
         return self._track(vi, stride, continuous, buffered=buffered)
@@ -427,200 +451,78 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         return vi
         
 
+class WeakAnnotationTracker(MultiscaleVideoTracker):
+    &#34;&#34;&#34;heyvi.detection.WeakAnnotationTracker()
 
-class Proposal(ObjectDetector):
-    def __call__(self, v, conf=1E-2, iou=0.8):
-        return super().__call__(v, conf, iou)
+    Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking.
     
-    
-class VideoProposal(Proposal):
-    &#34;&#34;&#34;heyvi.detection.VideoProposal() class.
-    
-       Track-based object proposals in video.
+    Approach:
+        - THe input video should have weak tracks provided by live annotators with class names that intersect `heyvi.detection.MultiscaleVideoTracker`.
+        - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording.  
+        - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.  
+        - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.
+        - The tracker compbines these rescored detections as in the VideoTracker.
+        - When done, each track is assigned to a proposal. 
+
+    Usage:
+
+    &gt;&gt;&gt; T = heyvi.detection.WeakAnnotationTracker()
+    &gt;&gt;&gt; v = vipy.video.Scene(...)
+    &gt;&gt;&gt; vt = T.track(v)
+    &gt;&gt;&gt; vm = vt.combine(v.trackmap(lambda t: t.category(&#39;weak annotation&#39;)))
+
+        - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
+        - All track and activities IDs are mapped appropriately from the input video.  
+        - The combined video vm has both the weak annotation and the refined tracks.
+
     &#34;&#34;&#34;
-    def allowable_objects(self):
-        return [&#39;person&#39;, &#39;vehicle&#39;, &#39;car&#39;, &#39;motorcycle&#39;, &#39;object&#39;, &#39;bicycle&#39;, &#39;motorbike&#39;, &#39;truck&#39;]
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=64):
+        # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
+        super().__init__(minconf=minconf, miniou=miniou, maxhistory=maxhistory, objects=None, trackconf=trackconf, verbose=verbose, gpu=gpu, batchsize=batchsize, weightfile=weightfile, overlapfrac=overlapfrac, detbatchsize=detbatchsize, gate=gate)
 
-    def isallowable(self, v):
-        assert isinstance(v, vipy.video.Video), &#34;Invalid input - must be vipy.video.Video not &#39;%s&#39;&#34; % (str(type(v)))
-        return all([c.lower() in self.allowable_objects() for c in v.objectlabels()]) # for now
+    def _track(self, vi, stride=1, continuous=False, buffered=True):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super()._track(vi, stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
-    def __call__(self, v, conf=1E-2, iou=0.8, dt=1, target=None, activitybox=False, dilate=4.0, dilate_height=None, dilate_width=None):
-        assert isinstance(v, vipy.video.Video), &#34;Invalid input - must be vipy.video.Video not &#39;%s&#39;&#34; % (str(type(v)))
+    def track(self, vi, verbose=False):
+        self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) &gt; 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  
+            
 
-        # Optional target class
-        d_target_to_index = {&#39;person&#39;:[self._cls2index[&#39;person&#39;]],
-                             &#39;bicycle&#39;:[self._cls2index[&#39;bicycle&#39;]],
-                             &#39;vehicle&#39;:[self._cls2index[&#39;car&#39;], self._cls2index[&#39;motorbike&#39;], self._cls2index[&#39;truck&#39;]], 
-                             &#39;car&#39;:[self._cls2index[&#39;car&#39;], self._cls2index[&#39;truck&#39;]],
-                             &#39;motorcycle&#39;:[self._cls2index[&#39;motorbike&#39;]],
-                             &#39;object&#39;:[self._cls2index[k] for k in [&#39;backpack&#39;, &#39;handbag&#39;, &#39;suitcase&#39;, &#39;frisbee&#39;, &#39;sports ball&#39;, &#39;bottle&#39;, &#39;cup&#39;, &#39;bowl&#39;, &#39;laptop&#39;, &#39;book&#39;]]}
-        d_index_to_target = {i:k for (k,v) in d_target_to_index.items() for i in v}
-        assert all([k in self.allowable_objects() for k in d_target_to_index.keys()])        
-        assert target is None or (isinstance(target, list) and all([t in d_target_to_index.keys() for t in target]))
-        f_max_target_confidence = lambda d: (max([d[5+k] for t in target for k in d_target_to_index[t]]) if target is not None else max(d[5:]))
-        f_max_target_category = lambda d: (sorted([(d[5+k], t) for t in target for k in d_target_to_index[t]], key=lambda x: x[0])[-1][1] if target is not None else None)
-        
-        # Source video foveation: dilated crop of the activity box and resize (this transformation must be reversed)
-        vc = v.clone(flushforward=True)  # to avoid memory leaks
-        (dilate_height, dilate_width) = (dilate if dilate_height is None else dilate_height, dilate if dilate_width is None else dilate_width)
-        bb = vc.activitybox().dilate_height(dilate_height).dilate_width(dilate_width).imclipshape(vc.width(), vc.height()) if activitybox else vipy.geometry.imagebox(vc.shape())
-        scale = max(bb.shape()) / float(self._mindim)  # for reversal, input is maxsquare() resized to _mindim
+class WeakAnnotationFaceTracker(FaceTracker):
+    &#34;&#34;&#34;See `heyvi.detection.WeakAnnotationTracker`&#34;&#34;&#34;
+    def __call__(self, vi, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, smoothing=None):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super().__call__(vi, minconf=minconf, miniou=miniou, maxhistory=maxhistory, smoothing=None, trackconf=trackconf, rescore=f_rescorer)
 
-        # Batched proposals on transformed video (preloads source and transformed videos, high mem requirement)
-        ims = []
-        img = vc.numpy()[::dt]  # source video, triggers load
-        tensor = vc.flush().crop(bb, zeropad=False).maxsquare().mindim(self._mindim).torch()[::dt]  # transformed video, NxCxHxW, re-triggers load due to crop()
+    def track(self, vi, verbose=False):        
+        assert isinstance(vi, vipy.video.Scene)
+        if not any([t.category().lower() == &#39;face&#39; for t in vi.tracklist()]):
+            warnings.warn(&#39;No face proposals&#39;)
+            return vi.clone()
 
-        for i in range(0, len(tensor), self.batchsize()):
-            with torch.no_grad():
-                t = tensor[i:i+self.batchsize()]
-                todevice = [b.to(d, non_blocking=True) for (b,d) in zip(t.split(self._batchsize) , self._devices)]  # async?
-                fromdevice = [m(b)[0] for (m,b) in zip(self._models, todevice)]     # detection!
-                dets = [torch.squeeze(t, dim=0).cpu().detach().numpy() for d in fromdevice for t in torch.split(d, 1, 0)]   # unpack batch to list of detections per imag
-
-            for (j, det) in enumerate(dets):
-                # Objects in transformed video
-                objs = [vipy.object.Detection(xcentroid=float(d[0]), 
-                                              ycentroid=float(d[1]), 
-                                              width=float(d[2]), 
-                                              height=float(d[3]), 
-                                              confidence=(float(d[4]) + f_max_target_confidence(d)),
-                                              category=(&#39;%1.2f&#39; % float(d[4])) if target is None else f_max_target_category(d))
-                        for d in det
-                        if (float(d[4]) &gt; conf) and (f_max_target_confidence(d) &gt; conf)]
-        
-                # Objects in source video
-                objs = [obj.rescale(scale).translate(bb.xmin(), bb.ymin()) for obj in objs]
-                ims.append( vipy.image.Scene(array=img[i+j], objects=objs).nms(conf, iou) )        
-        return ims
-
-
-class FaceProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 and all([t.category().lower() in [&#39;face&#39;] for t in vp.tracklist()])
-        assert len(vt.tracklist()) &gt;= 0 and all([t.category().lower() in [&#39;face&#39;] for t in vt.tracklist()])
-
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s &gt; spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():            
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-                
-        return vc.trackfilter(lambda t: t.id() not in suppressed)
-
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) &gt; 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best face track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  
     
-class TrackProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 
-        assert len(vt.tracklist()) &gt;= 0 and all([t.category().lower() in vp.objects(casesensitive=False) for t in vt.tracklist()])
-        assert vp.framerate() == vt.framerate()
-        
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s &gt; spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-
-        vc.activitymap(lambda a: a.actorid(sorted([(t.id(), a.temporal_iou(t)) for t in vc.tracklist()], key=lambda x: x[1])[-1][0]))  # actor for each activity is track with best overlap
-        return vc.trackfilter(lambda t: t.id() not in suppressed)
-    
-        
-class VideoProposalRefinement(VideoProposal):
-    &#34;&#34;&#34;heyvi.detection.VideoProposalRefinement() class.
-    
-       Track-based object proposal refinement of a weakly supervised loose object box from a human annotator.
-    &#34;&#34;&#34;
-    
-    def __call__(self, v, proposalconf=5E-2, proposaliou=0.8, miniou=0.2, dt=1, meanfilter=15, mincover=0.8, shapeiou=0.7, smoothing=&#39;spline&#39;, splinefactor=None, strict=True, byclass=True, dilate_height=None, dilate_width=None, refinedclass=None, pdist=False, minconf=1E-2):
-        &#34;&#34;&#34;Replace proposal in v by best (maximum overlap and confidence) object proposal in vc.  If no proposal exists, delete the proposal.&#34;&#34;&#34;
-        assert isinstance(v, vipy.video.Scene), &#34;Invalid input - must be vipy.video.Scene not &#39;%s&#39;&#34; % (str(type(v)))
-        assert not (byclass is False and refinedclass is not None), &#34;Invalid input&#34;
-        
-        if not self.isallowable(v):
-            warnings.warn(&#34;Invalid object labels &#39;%s&#39; for proposal, must be only one target object label and must be in &#39;%s&#39; - returning original video&#34; % (str(v.objectlabels()), str(self.allowable_objects())))
-            return v.clone().setattribute(&#39;unrefined&#39;)
-        target = None if not byclass else [c.lower() for c in v.objectlabels()] if refinedclass is None else [refinedclass.lower()]  # classes for proposals
-        vp = super().__call__(v, proposalconf, proposaliou, dt=dt, activitybox=True, dilate_height=dilate_height, dilate_width=dilate_width, target=target)  # subsampled proposals
-        vc = v.clone(rekey=True, flushforward=True, flushbackward=True).trackfilter(lambda t: len(t) &gt; dt)
-        for (ti, t) in vc.tracks().items():
-            if len(t) &lt;= 1:
-                continue  # no human annotation, skip
-
-            t.resample(dt=dt)  # interpolated keyframes for source proposal
-            bbprev = None  # last box assignment
-            s = shapeiou  # shape assignment threshold
-            for (f, bb) in zip(t.clone().keyframes(), t.clone().keyboxes()):  # clone because vc is being modified in-loop
-                fs = int(f // dt)  # subsampled frame index, guaranteed incremental [0,1,2,...] by resample()
-                if fs&gt;=0 and fs&lt;=len(vp):  
-                    # Assignment: maximum (overlap with previous box + same shape as previous box + overlap with human box) * (objectness confidence + class confidence)
-                    # Assignment constraints: (new box must not be too small relative to collector box) and (new box must be mostly contained within the collector box) and (new box must mostly overlap previous box) 
-                    assignment = sorted([(bbp, (((bbp.shapeiou(bbprev) + bbp.iou(bbprev)) if bbprev is not None else 1.0) + (bb.iou(bbp) if not pdist else bb.pdist(bbp)))*bbp.confidence())
-                                         for bbp in vp[min(fs, len(vp)-1)].objects() 
-                                         if (bb.iou(bbp)&gt;=miniou and   # refinement overlaps proposal (proposal is loose)
-                                             bbp.cover(bb)&gt;=mincover and  # refinement is covered by proposal (proposal is loose, refinement is inside)
-                                             (bbprev is None or bbprev.shapeiou(bbp)&gt;s) and  # refinement has similar shape over time
-                                             (byclass is False or (refinedclass is None and (bbp.category().lower() == bb.category().lower())) or (refinedclass is not None and bbp.category().lower()==refinedclass.lower()))  # refine by target object only
-                                         )], key=lambda x: x[1])
-
-                    (bbp, iou) = assignment[-1] if len(assignment)&gt;0 else (None, None)  # best assignment                    
-                    if iou is not None and iou &gt; minconf:
-                        newcategory = t.category() if refinedclass is None else refinedclass
-                        vc.tracks()[ti].category(newcategory).replace(f, bbp.clone().category(newcategory))
-                        bbprev = bbp.clone() # update last assignment
-                        s = shapeiou
-                    else:
-                        if strict:
-                            vc.tracks()[ti].delete(f)  # Delete proposal that has no object proposal, otherwise use source proposal for interpolation
-                        s = max(0, s-(0.01*dt))  # gate increase (shape assignment threshold decrease) for shape deformation
-
-        # Remove empty tracks:
-        # if a track does not have an assignment for the last (or first) source proposal, then it will be truncated here
-        vc = vc.trackfilter(lambda t: len(t)&gt;dt)    # may be empty
-
-        # Proposal smoothing
-        if not vc.hastracks():
-            warnings.warn(&#39;VideoProposalRefinement returned no tracks&#39;)
-            return vc.setattribute(&#39;unrefined&#39;)
-        elif smoothing == &#39;mean&#39;:
-            # Mean track smoothing: mean shape smoothing with mean coordinate smoothing with very small support for unstabilized video
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).smooth(3))
-        elif smoothing == &#39;spline&#39;:
-            # Cubic spline track smoothing with mean shape smoothing 
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).spline(smoothingfactor=splinefactor, strict=False))
-        elif smoothing is None:
-            return vc
-        else:
-            raise ValueError(&#39;Unknown smoothing &#34;%s&#34;&#39; % str(smoothing))
-
 
 class ActorAssociation(MultiscaleVideoTracker):
     &#34;&#34;&#34;heyvi.detection.VideoAssociation() class
        
        Select the best object track of the target class associated with the primary actor class by gated spatial IOU and distance.
        Add the best object track to the scene and associate with all activities performed by the primary actor.
+
+    .. warning:: This is scheduled for deprecation, as the gating is unreliable.  This should be replaced by the WeakAnnotationTracker for a target class. 
     &#34;&#34;&#34;
 
     @staticmethod
@@ -665,13 +567,7 @@ class ActorAssociation(MultiscaleVideoTracker):
 
         return vc.framerate(v.framerate()) if vc.framerate() != v.framerate() else vc   # upsample
 
-    
-def _collectorproposal_vs_objectproposal(v, dt=1, miniou=0.2, smoothing=&#39;spline&#39;):
-    &#34;&#34;&#34;Return demo video that compares the human collector annotated proposal vs. the ML annotated proposal for a vipy.video.Scene()&#34;&#34;&#34;
-    assert isinstance(v, vipy.video.Scene)
-    v_human = v.clone().trackmap(lambda t: t.shortlabel(&#39;%s (collector box)&#39; % t.category()))
-    v_object = v.clone().trackmap(lambda t: t.shortlabel(&#39;%s (ML box)&#39; % t.category()))
-    return VideoProposalRefinement()(v_object, dt=dt, miniou=miniou, smoothing=smoothing).union(v_human, spatial_iou_threshold=1)</code></pre>
+    </code></pre>
 </details>
 </section>
 <section>
@@ -690,17 +586,23 @@ def _collectorproposal_vs_objectproposal(v, dt=1, miniou=0.2, smoothing=&#39;spl
 <dd>
 <div class="desc"><p>heyvi.detection.VideoAssociation() class</p>
 <p>Select the best object track of the target class associated with the primary actor class by gated spatial IOU and distance.
-Add the best object track to the scene and associate with all activities performed by the primary actor.</p></div>
+Add the best object track to the scene and associate with all activities performed by the primary actor.</p>
+<div class="admonition warning">
+<p class="admonition-title">Warning:&ensp;This is scheduled for deprecation, as the gating is unreliable.
+This should be replaced by the WeakAnnotationTracker for a target class.</p>
+</div></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L590-L637" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L490-L539" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActorAssociation(MultiscaleVideoTracker):
     &#34;&#34;&#34;heyvi.detection.VideoAssociation() class
        
        Select the best object track of the target class associated with the primary actor class by gated spatial IOU and distance.
        Add the best object track to the scene and associate with all activities performed by the primary actor.
+
+    .. warning:: This is scheduled for deprecation, as the gating is unreliable.  This should be replaced by the WeakAnnotationTracker for a target class. 
     &#34;&#34;&#34;
 
     @staticmethod
@@ -763,7 +665,7 @@ Add the best object track to the scene and associate with all activities perform
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L597-L602" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L499-L504" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def isallowable(v, actor_class, association_class, fps=None):
@@ -792,7 +694,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L58-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L58-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FaceDetector(TorchNet):
     &#34;&#34;&#34;Faster R-CNN based face detector
@@ -840,48 +742,13 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L83-L84" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L83-L84" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def batchsize(self):
     return 1  # FIXME</code></pre>
 </details>
 </dd>
 </dl>
-</dd>
-<dt id="heyvi.detection.FaceProposalRefinement"><code class="flex name class">
-<span>class <span class="ident">FaceProposalRefinement</span></span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L470-L492" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class FaceProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 and all([t.category().lower() in [&#39;face&#39;] for t in vp.tracklist()])
-        assert len(vt.tracklist()) &gt;= 0 and all([t.category().lower() in [&#39;face&#39;] for t in vt.tracklist()])
-
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s &gt; spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():            
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-                
-        return vc.trackfilter(lambda t: t.id() not in suppressed)</code></pre>
-</details>
 </dd>
 <dt id="heyvi.detection.FaceTracker"><code class="flex name class">
 <span>class <span class="ident">FaceTracker</span></span>
@@ -892,16 +759,17 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L339-L353" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L339-L354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FaceTracker(FaceDetector):
-    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05):
-        (f) = (super().__call__)
+    def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, trackconf=0.05, rescore=None):
+        (f, f_rescore) = (super().__call__, rescore if (rescore is not None and callable(rescore)) else (lambda im,k: im))
         assert isinstance(v, vipy.video.Video), &#34;Invalid input&#34;
-        vc = v.clone().clear()  
+        vc = v.clone()  
         for (k, vb) in enumerate(vc.stream().batch(self.batchsize())):
             for (j, im) in enumerate([f(im) for im in vb.framelist()]):
-                yield vc.assign(k*self.batchsize()+j, im.clone().objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
+                frameindex = k*self.batchsize()+j
+                yield vc.assign(frameindex, f_rescore(im.clone(), frameindex).objects(), minconf=trackconf, maxhistory=maxhistory)  # in-place            
 
     def track(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False):
         &#34;&#34;&#34;Batch tracking&#34;&#34;&#34;
@@ -915,6 +783,10 @@ def isallowable(v, actor_class, association_class, fps=None):
 <li><a title="heyvi.detection.FaceDetector" href="#heyvi.detection.FaceDetector">FaceDetector</a></li>
 <li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
 </ul>
+<h3>Subclasses</h3>
+<ul class="hlist">
+<li><a title="heyvi.detection.WeakAnnotationFaceTracker" href="#heyvi.detection.WeakAnnotationFaceTracker">WeakAnnotationFaceTracker</a></li>
+</ul>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.detection.FaceTracker.track"><code class="name flex">
@@ -925,7 +797,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L348-L353" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L349-L354" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def track(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False):
     &#34;&#34;&#34;Batch tracking&#34;&#34;&#34;
@@ -946,7 +818,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L247-L303" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L247-L303" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MultiscaleObjectDetector(ObjectDetector):  
     &#34;&#34;&#34;Given a list of images, break each one into a set of overlapping tiles, and ObjectDetector() on each, then recombining detections&#34;&#34;&#34;
@@ -1027,7 +899,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L314-L318" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L314-L318" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MultiscaleVideoDetector(MultiscaleObjectDetector):
     def __call__(self, v, conf=0.5, iou=0.5):
@@ -1048,14 +920,52 @@ def isallowable(v, actor_class, association_class, fps=None):
 <span>(</span><span>minconf=0.05, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.2, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=6, detbatchsize=None, gate=64)</span>
 </code></dt>
 <dd>
-<div class="desc"><p>MultiscaleVideoTracker() class</p></div>
+<div class="desc"><p>MultiscaleVideoTracker() class</p>
+<h2 id="args">Args</h2>
+<p>minconf [float]: The minimum confidence of an object detection to be considered for tracking
+miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment
+maxhistory [int]:
+The maximum frame history lookback for assignment of a detection with a broken track
+smoothing [str]:
+Unused
+objects [list]:
+The list of allowable objects for tracking as supported by <code><a title="heyvi.detection.MultiscaleObjectDetector" href="#heyvi.detection.MultiscaleObjectDetector">MultiscaleObjectDetector</a></code>.
+trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track
+verbose [bool]:
+Logging verbosity
+gpu [list]: List of GPU indexes to use
+batchsize [int]:
+The GPU batchsize
+weightfile [str]: The modelfile for the object detector
+overlapfrac [int]: FIXME, this is a legacy parameter
+detbatchsize [int]:
+The detection batchsize per image
+gate [int]:
+The maximum distance in pixels around a detection to search for candidate tracks</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L356-L398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L357-L422" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MultiscaleVideoTracker(MultiscaleObjectDetector):
-    &#34;&#34;&#34;MultiscaleVideoTracker() class&#34;&#34;&#34;
+    &#34;&#34;&#34;MultiscaleVideoTracker() class
+
+    Args:
+        minconf [float]: The minimum confidence of an object detection to be considered for tracking
+        miniou [float]: The minimum IoU of an object detection with a track to be considered for assignment
+        maxhistory [int]:  The maximum frame history lookback for assignment of a detection with a broken track
+        smoothing [str]:  Unused
+        objects [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
+        trackconf [float]: The minimum confidence of an unassigned detection to spawn a new track
+        verbose [bool]:  Logging verbosity
+        gpu [list]: List of GPU indexes to use
+        batchsize [int]:  The GPU batchsize
+        weightfile [str]: The modelfile for the object detector
+        overlapfrac [int]: FIXME, this is a legacy parameter
+        detbatchsize [int]:  The detection batchsize per image
+        gate [int]:  The maximum distance in pixels around a detection to search for candidate tracks
+
+    &#34;&#34;&#34;
 
 
     def __init__(self, minconf=0.05, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.2, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=6, detbatchsize=None, gate=64):
@@ -1072,18 +982,24 @@ def isallowable(v, actor_class, association_class, fps=None):
         self._detbatchsize = detbatchsize if detbatchsize is not None else self.batchsize()
         self._gate = gate
 
-    def _track(self, vi, stride=1, continuous=False, buffered=True):
+    def _track(self, vi, stride=1, continuous=False, buffered=True, rescore=None):
         &#34;&#34;&#34;Yield vipy.video.Scene(), an incremental tracked result for each frame.
+        
+            Args:
+                rescore [callable]: Takes in a single frame with objects and a frame index, and rescores confidences.  Useful for rescoring detections prior to tracking using prior or out-of-band information.  
         &#34;&#34;&#34;
         assert isinstance(vi, vipy.video.Video), &#34;Invalid input&#34;
+        assert rescore is None or callable(rescore), &#34;Invalid input&#34;        
 
         (det, n, k) = (super().__call__, self._mindim, 0)
+        rescore = (lambda x,k: x) if rescore is None else rescore
         for (k,vb) in enumerate(vi.stream(buffered=buffered).batch(self._detbatchsize)):
             framelist = vb.framelist()
             for (j, im) in zip(range(0, len(framelist), stride), tolist(det(framelist[::stride], self._minconf, self._miniou, self._maxarea, objects=self._objects, overlapfrac=self._overlapfrac))):
                 for i in range(j, j+stride):                    
                     if i &lt; len(framelist):
-                        yield (vi.assign(frame=k*self._detbatchsize+i, dets=im.objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
+                        frameindex = k*self._detbatchsize+i
+                        yield (vi.assign(frame=frameindex, dets=rescore(im, frameindex).objects(), minconf=self._trackconf, maxhistory=self._maxhistory, gate=self._gate) if (i == j) else vi)
                             
     def __call__(self, vi, stride=1, continuous=False, buffered=True):
         return self._track(vi, stride, continuous, buffered=buffered)
@@ -1108,6 +1024,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <h3>Subclasses</h3>
 <ul class="hlist">
 <li><a title="heyvi.detection.ActorAssociation" href="#heyvi.detection.ActorAssociation">ActorAssociation</a></li>
+<li><a title="heyvi.detection.WeakAnnotationTracker" href="#heyvi.detection.WeakAnnotationTracker">WeakAnnotationTracker</a></li>
 </ul>
 <h3>Methods</h3>
 <dl>
@@ -1119,7 +1036,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L390-L391" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L414-L415" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def stream(self, vi):
     return self._track(vi)</code></pre>
@@ -1133,7 +1050,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L393-L398" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L417-L422" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def track(self, vi, verbose=False):
     &#34;&#34;&#34;Batch tracking&#34;&#34;&#34;
@@ -1154,7 +1071,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L242-L244" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L242-L244" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ObjectDetector(Yolov5):
     &#34;&#34;&#34;Default object detector&#34;&#34;&#34;
@@ -1168,35 +1085,8 @@ def isallowable(v, actor_class, association_class, fps=None):
 <h3>Subclasses</h3>
 <ul class="hlist">
 <li><a title="heyvi.detection.MultiscaleObjectDetector" href="#heyvi.detection.MultiscaleObjectDetector">MultiscaleObjectDetector</a></li>
-<li><a title="heyvi.detection.Proposal" href="#heyvi.detection.Proposal">Proposal</a></li>
 <li><a title="heyvi.detection.VideoDetector" href="#heyvi.detection.VideoDetector">VideoDetector</a></li>
 <li><a title="heyvi.detection.VideoTracker" href="#heyvi.detection.VideoTracker">VideoTracker</a></li>
-</ul>
-</dd>
-<dt id="heyvi.detection.Proposal"><code class="flex name class">
-<span>class <span class="ident">Proposal</span></span>
-<span>(</span><span>batchsize=1, weightfile=None, gpu=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>Default object detector</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L402-L404" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class Proposal(ObjectDetector):
-    def __call__(self, v, conf=1E-2, iou=0.8):
-        return super().__call__(v, conf, iou)</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="heyvi.detection.ObjectDetector" href="#heyvi.detection.ObjectDetector">ObjectDetector</a></li>
-<li><a title="heyvi.detection.Yolov5" href="#heyvi.detection.Yolov5">Yolov5</a></li>
-<li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
-</ul>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="heyvi.detection.VideoProposal" href="#heyvi.detection.VideoProposal">VideoProposal</a></li>
 </ul>
 </dd>
 <dt id="heyvi.detection.TorchNet"><code class="flex name class">
@@ -1207,7 +1097,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L15-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L15-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class TorchNet(object):
 
@@ -1267,7 +1157,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L54-L55" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L54-L55" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def batchsize(self):
     return int(len(self._models)*self._batchsize)</code></pre>
@@ -1281,7 +1171,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L35-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L35-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def cpu(self, batchsize=None):
     return self.gpu(idlist=[&#39;cpu&#39;], batchsize=batchsize)</code></pre>
@@ -1295,7 +1185,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L17-L33" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L17-L33" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def gpu(self, idlist, batchsize=None):
     assert batchsize is None or (isinstance(batchsize, int) and batchsize &gt; 0), &#34;Batchsize must be integer&#34;
@@ -1324,7 +1214,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L38-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L38-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def iscpu(self):
     return any([&#39;cpu&#39; in d for d in self._devices])</code></pre>
@@ -1338,50 +1228,13 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L41-L42" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L41-L42" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def isgpu(self):
     return any([&#39;cuda&#39; in d for d in self._devices])</code></pre>
 </details>
 </dd>
 </dl>
-</dd>
-<dt id="heyvi.detection.TrackProposalRefinement"><code class="flex name class">
-<span>class <span class="ident">TrackProposalRefinement</span></span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L495-L519" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class TrackProposalRefinement():
-    def __call__(self, vp, vt, spatial_iou_threshold=0.2):
-        assert isinstance(vp, vipy.video.Scene) and isinstance(vt, vipy.video.Scene)        
-        assert len(vp.tracklist()) == 1 
-        assert len(vt.tracklist()) &gt;= 0 and all([t.category().lower() in vp.objects(casesensitive=False) for t in vt.tracklist()])
-        assert vp.framerate() == vt.framerate()
-        
-        vc = vt.clone()
-        suppressed = set([])
-        for (ti,s,c) in sorted([(t, vp.actor().segment_percentileiou(t, percentile=0.5), t.confidence()) for t in vc.tracklist()], key=lambda x: x[1]*x[2], reverse=True):
-            if ti.id() not in suppressed and s &gt; spatial_iou_threshold and ti.category().lower() == vp.actor().category().lower():
-                # Assign proposal to best track
-                for a in vp.activitylist():
-                    if a.hastrack(vp.actor()) and not vc.hasactivity(a.id()):
-                        vc.activities()[a.id()] = a.clone().replace(vp.actor(), ti)
-                    elif a.hastrack(vp.actor()) and vc.hasactivity(a.id()):
-                        vc.activities()[a.id()].append(ti)
-                
-                # Supress all other temporally overlapping tracks (not including ti)
-                suppressed = suppressed.union([t.id() for t in vc.tracklist() if t.id() != ti.id() and t.temporal_distance(ti) == 0 and t.id() not in suppressed])
-            else:
-                suppressed.add(ti.id())        
-
-        vc.activitymap(lambda a: a.actorid(sorted([(t.id(), a.temporal_iou(t)) for t in vc.tracklist()], key=lambda x: x[1])[-1][0]))  # actor for each activity is track with best overlap
-        return vc.trackfilter(lambda t: t.id() not in suppressed)</code></pre>
-</details>
 </dd>
 <dt id="heyvi.detection.VideoDetector"><code class="flex name class">
 <span>class <span class="ident">VideoDetector</span></span>
@@ -1392,7 +1245,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L306-L311" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L306-L311" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class VideoDetector(ObjectDetector):  
     &#34;&#34;&#34;Iterate ObjectDetector() over each frame of video, yielding the detected frame&#34;&#34;&#34;
@@ -1408,212 +1261,6 @@ def isallowable(v, actor_class, association_class, fps=None):
 <li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
 </ul>
 </dd>
-<dt id="heyvi.detection.VideoProposal"><code class="flex name class">
-<span>class <span class="ident">VideoProposal</span></span>
-<span>(</span><span>batchsize=1, weightfile=None, gpu=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>heyvi.detection.VideoProposal() class.</p>
-<p>Track-based object proposals in video.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L407-L467" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class VideoProposal(Proposal):
-    &#34;&#34;&#34;heyvi.detection.VideoProposal() class.
-    
-       Track-based object proposals in video.
-    &#34;&#34;&#34;
-    def allowable_objects(self):
-        return [&#39;person&#39;, &#39;vehicle&#39;, &#39;car&#39;, &#39;motorcycle&#39;, &#39;object&#39;, &#39;bicycle&#39;, &#39;motorbike&#39;, &#39;truck&#39;]
-
-    def isallowable(self, v):
-        assert isinstance(v, vipy.video.Video), &#34;Invalid input - must be vipy.video.Video not &#39;%s&#39;&#34; % (str(type(v)))
-        return all([c.lower() in self.allowable_objects() for c in v.objectlabels()]) # for now
-
-    def __call__(self, v, conf=1E-2, iou=0.8, dt=1, target=None, activitybox=False, dilate=4.0, dilate_height=None, dilate_width=None):
-        assert isinstance(v, vipy.video.Video), &#34;Invalid input - must be vipy.video.Video not &#39;%s&#39;&#34; % (str(type(v)))
-
-        # Optional target class
-        d_target_to_index = {&#39;person&#39;:[self._cls2index[&#39;person&#39;]],
-                             &#39;bicycle&#39;:[self._cls2index[&#39;bicycle&#39;]],
-                             &#39;vehicle&#39;:[self._cls2index[&#39;car&#39;], self._cls2index[&#39;motorbike&#39;], self._cls2index[&#39;truck&#39;]], 
-                             &#39;car&#39;:[self._cls2index[&#39;car&#39;], self._cls2index[&#39;truck&#39;]],
-                             &#39;motorcycle&#39;:[self._cls2index[&#39;motorbike&#39;]],
-                             &#39;object&#39;:[self._cls2index[k] for k in [&#39;backpack&#39;, &#39;handbag&#39;, &#39;suitcase&#39;, &#39;frisbee&#39;, &#39;sports ball&#39;, &#39;bottle&#39;, &#39;cup&#39;, &#39;bowl&#39;, &#39;laptop&#39;, &#39;book&#39;]]}
-        d_index_to_target = {i:k for (k,v) in d_target_to_index.items() for i in v}
-        assert all([k in self.allowable_objects() for k in d_target_to_index.keys()])        
-        assert target is None or (isinstance(target, list) and all([t in d_target_to_index.keys() for t in target]))
-        f_max_target_confidence = lambda d: (max([d[5+k] for t in target for k in d_target_to_index[t]]) if target is not None else max(d[5:]))
-        f_max_target_category = lambda d: (sorted([(d[5+k], t) for t in target for k in d_target_to_index[t]], key=lambda x: x[0])[-1][1] if target is not None else None)
-        
-        # Source video foveation: dilated crop of the activity box and resize (this transformation must be reversed)
-        vc = v.clone(flushforward=True)  # to avoid memory leaks
-        (dilate_height, dilate_width) = (dilate if dilate_height is None else dilate_height, dilate if dilate_width is None else dilate_width)
-        bb = vc.activitybox().dilate_height(dilate_height).dilate_width(dilate_width).imclipshape(vc.width(), vc.height()) if activitybox else vipy.geometry.imagebox(vc.shape())
-        scale = max(bb.shape()) / float(self._mindim)  # for reversal, input is maxsquare() resized to _mindim
-
-        # Batched proposals on transformed video (preloads source and transformed videos, high mem requirement)
-        ims = []
-        img = vc.numpy()[::dt]  # source video, triggers load
-        tensor = vc.flush().crop(bb, zeropad=False).maxsquare().mindim(self._mindim).torch()[::dt]  # transformed video, NxCxHxW, re-triggers load due to crop()
-
-        for i in range(0, len(tensor), self.batchsize()):
-            with torch.no_grad():
-                t = tensor[i:i+self.batchsize()]
-                todevice = [b.to(d, non_blocking=True) for (b,d) in zip(t.split(self._batchsize) , self._devices)]  # async?
-                fromdevice = [m(b)[0] for (m,b) in zip(self._models, todevice)]     # detection!
-                dets = [torch.squeeze(t, dim=0).cpu().detach().numpy() for d in fromdevice for t in torch.split(d, 1, 0)]   # unpack batch to list of detections per imag
-
-            for (j, det) in enumerate(dets):
-                # Objects in transformed video
-                objs = [vipy.object.Detection(xcentroid=float(d[0]), 
-                                              ycentroid=float(d[1]), 
-                                              width=float(d[2]), 
-                                              height=float(d[3]), 
-                                              confidence=(float(d[4]) + f_max_target_confidence(d)),
-                                              category=(&#39;%1.2f&#39; % float(d[4])) if target is None else f_max_target_category(d))
-                        for d in det
-                        if (float(d[4]) &gt; conf) and (f_max_target_confidence(d) &gt; conf)]
-        
-                # Objects in source video
-                objs = [obj.rescale(scale).translate(bb.xmin(), bb.ymin()) for obj in objs]
-                ims.append( vipy.image.Scene(array=img[i+j], objects=objs).nms(conf, iou) )        
-        return ims</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="heyvi.detection.Proposal" href="#heyvi.detection.Proposal">Proposal</a></li>
-<li><a title="heyvi.detection.ObjectDetector" href="#heyvi.detection.ObjectDetector">ObjectDetector</a></li>
-<li><a title="heyvi.detection.Yolov5" href="#heyvi.detection.Yolov5">Yolov5</a></li>
-<li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
-</ul>
-<h3>Subclasses</h3>
-<ul class="hlist">
-<li><a title="heyvi.detection.VideoProposalRefinement" href="#heyvi.detection.VideoProposalRefinement">VideoProposalRefinement</a></li>
-</ul>
-<h3>Methods</h3>
-<dl>
-<dt id="heyvi.detection.VideoProposal.allowable_objects"><code class="name flex">
-<span>def <span class="ident">allowable_objects</span></span>(<span>self)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L412-L413" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def allowable_objects(self):
-    return [&#39;person&#39;, &#39;vehicle&#39;, &#39;car&#39;, &#39;motorcycle&#39;, &#39;object&#39;, &#39;bicycle&#39;, &#39;motorbike&#39;, &#39;truck&#39;]</code></pre>
-</details>
-</dd>
-<dt id="heyvi.detection.VideoProposal.isallowable"><code class="name flex">
-<span>def <span class="ident">isallowable</span></span>(<span>self, v)</span>
-</code></dt>
-<dd>
-<div class="desc"></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L415-L417" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">def isallowable(self, v):
-    assert isinstance(v, vipy.video.Video), &#34;Invalid input - must be vipy.video.Video not &#39;%s&#39;&#34; % (str(type(v)))
-    return all([c.lower() in self.allowable_objects() for c in v.objectlabels()]) # for now</code></pre>
-</details>
-</dd>
-</dl>
-</dd>
-<dt id="heyvi.detection.VideoProposalRefinement"><code class="flex name class">
-<span>class <span class="ident">VideoProposalRefinement</span></span>
-<span>(</span><span>batchsize=1, weightfile=None, gpu=None)</span>
-</code></dt>
-<dd>
-<div class="desc"><p>heyvi.detection.VideoProposalRefinement() class.</p>
-<p>Track-based object proposal refinement of a weakly supervised loose object box from a human annotator.</p></div>
-<details class="source">
-<summary>
-<span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L522-L587" class="git-link">Browse git</a>
-</summary>
-<pre><code class="python">class VideoProposalRefinement(VideoProposal):
-    &#34;&#34;&#34;heyvi.detection.VideoProposalRefinement() class.
-    
-       Track-based object proposal refinement of a weakly supervised loose object box from a human annotator.
-    &#34;&#34;&#34;
-    
-    def __call__(self, v, proposalconf=5E-2, proposaliou=0.8, miniou=0.2, dt=1, meanfilter=15, mincover=0.8, shapeiou=0.7, smoothing=&#39;spline&#39;, splinefactor=None, strict=True, byclass=True, dilate_height=None, dilate_width=None, refinedclass=None, pdist=False, minconf=1E-2):
-        &#34;&#34;&#34;Replace proposal in v by best (maximum overlap and confidence) object proposal in vc.  If no proposal exists, delete the proposal.&#34;&#34;&#34;
-        assert isinstance(v, vipy.video.Scene), &#34;Invalid input - must be vipy.video.Scene not &#39;%s&#39;&#34; % (str(type(v)))
-        assert not (byclass is False and refinedclass is not None), &#34;Invalid input&#34;
-        
-        if not self.isallowable(v):
-            warnings.warn(&#34;Invalid object labels &#39;%s&#39; for proposal, must be only one target object label and must be in &#39;%s&#39; - returning original video&#34; % (str(v.objectlabels()), str(self.allowable_objects())))
-            return v.clone().setattribute(&#39;unrefined&#39;)
-        target = None if not byclass else [c.lower() for c in v.objectlabels()] if refinedclass is None else [refinedclass.lower()]  # classes for proposals
-        vp = super().__call__(v, proposalconf, proposaliou, dt=dt, activitybox=True, dilate_height=dilate_height, dilate_width=dilate_width, target=target)  # subsampled proposals
-        vc = v.clone(rekey=True, flushforward=True, flushbackward=True).trackfilter(lambda t: len(t) &gt; dt)
-        for (ti, t) in vc.tracks().items():
-            if len(t) &lt;= 1:
-                continue  # no human annotation, skip
-
-            t.resample(dt=dt)  # interpolated keyframes for source proposal
-            bbprev = None  # last box assignment
-            s = shapeiou  # shape assignment threshold
-            for (f, bb) in zip(t.clone().keyframes(), t.clone().keyboxes()):  # clone because vc is being modified in-loop
-                fs = int(f // dt)  # subsampled frame index, guaranteed incremental [0,1,2,...] by resample()
-                if fs&gt;=0 and fs&lt;=len(vp):  
-                    # Assignment: maximum (overlap with previous box + same shape as previous box + overlap with human box) * (objectness confidence + class confidence)
-                    # Assignment constraints: (new box must not be too small relative to collector box) and (new box must be mostly contained within the collector box) and (new box must mostly overlap previous box) 
-                    assignment = sorted([(bbp, (((bbp.shapeiou(bbprev) + bbp.iou(bbprev)) if bbprev is not None else 1.0) + (bb.iou(bbp) if not pdist else bb.pdist(bbp)))*bbp.confidence())
-                                         for bbp in vp[min(fs, len(vp)-1)].objects() 
-                                         if (bb.iou(bbp)&gt;=miniou and   # refinement overlaps proposal (proposal is loose)
-                                             bbp.cover(bb)&gt;=mincover and  # refinement is covered by proposal (proposal is loose, refinement is inside)
-                                             (bbprev is None or bbprev.shapeiou(bbp)&gt;s) and  # refinement has similar shape over time
-                                             (byclass is False or (refinedclass is None and (bbp.category().lower() == bb.category().lower())) or (refinedclass is not None and bbp.category().lower()==refinedclass.lower()))  # refine by target object only
-                                         )], key=lambda x: x[1])
-
-                    (bbp, iou) = assignment[-1] if len(assignment)&gt;0 else (None, None)  # best assignment                    
-                    if iou is not None and iou &gt; minconf:
-                        newcategory = t.category() if refinedclass is None else refinedclass
-                        vc.tracks()[ti].category(newcategory).replace(f, bbp.clone().category(newcategory))
-                        bbprev = bbp.clone() # update last assignment
-                        s = shapeiou
-                    else:
-                        if strict:
-                            vc.tracks()[ti].delete(f)  # Delete proposal that has no object proposal, otherwise use source proposal for interpolation
-                        s = max(0, s-(0.01*dt))  # gate increase (shape assignment threshold decrease) for shape deformation
-
-        # Remove empty tracks:
-        # if a track does not have an assignment for the last (or first) source proposal, then it will be truncated here
-        vc = vc.trackfilter(lambda t: len(t)&gt;dt)    # may be empty
-
-        # Proposal smoothing
-        if not vc.hastracks():
-            warnings.warn(&#39;VideoProposalRefinement returned no tracks&#39;)
-            return vc.setattribute(&#39;unrefined&#39;)
-        elif smoothing == &#39;mean&#39;:
-            # Mean track smoothing: mean shape smoothing with mean coordinate smoothing with very small support for unstabilized video
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).smooth(3))
-        elif smoothing == &#39;spline&#39;:
-            # Cubic spline track smoothing with mean shape smoothing 
-            return vc.trackmap(lambda t: t.smoothshape(width=meanfilter//dt).spline(smoothingfactor=splinefactor, strict=False))
-        elif smoothing is None:
-            return vc
-        else:
-            raise ValueError(&#39;Unknown smoothing &#34;%s&#34;&#39; % str(smoothing))</code></pre>
-</details>
-<h3>Ancestors</h3>
-<ul class="hlist">
-<li><a title="heyvi.detection.VideoProposal" href="#heyvi.detection.VideoProposal">VideoProposal</a></li>
-<li><a title="heyvi.detection.Proposal" href="#heyvi.detection.Proposal">Proposal</a></li>
-<li><a title="heyvi.detection.ObjectDetector" href="#heyvi.detection.ObjectDetector">ObjectDetector</a></li>
-<li><a title="heyvi.detection.Yolov5" href="#heyvi.detection.Yolov5">Yolov5</a></li>
-<li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
-</ul>
-</dd>
 <dt id="heyvi.detection.VideoTracker"><code class="flex name class">
 <span>class <span class="ident">VideoTracker</span></span>
 <span>(</span><span>batchsize=1, weightfile=None, gpu=None)</span>
@@ -1623,7 +1270,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L321-L336" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L321-L336" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class VideoTracker(ObjectDetector):
     def __call__(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05):
@@ -1658,7 +1305,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L331-L336" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L331-L336" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def track(self, v, minconf=0.001, miniou=0.6, maxhistory=5, smoothing=None, objects=None, trackconf=0.05, verbose=False):
     &#34;&#34;&#34;Batch tracking&#34;&#34;&#34;
@@ -1669,6 +1316,145 @@ def isallowable(v, actor_class, association_class, fps=None):
 </details>
 </dd>
 </dl>
+</dd>
+<dt id="heyvi.detection.WeakAnnotationFaceTracker"><code class="flex name class">
+<span>class <span class="ident">WeakAnnotationFaceTracker</span></span>
+<span>(</span><span>weightfile=None, gpu=None)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>See <code><a title="heyvi.detection.WeakAnnotationTracker" href="#heyvi.detection.WeakAnnotationTracker">WeakAnnotationTracker</a></code></p></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L469-L487" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class WeakAnnotationFaceTracker(FaceTracker):
+    &#34;&#34;&#34;See `heyvi.detection.WeakAnnotationTracker`&#34;&#34;&#34;
+    def __call__(self, vi, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, smoothing=None):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super().__call__(vi, minconf=minconf, miniou=miniou, maxhistory=maxhistory, smoothing=None, trackconf=trackconf, rescore=f_rescorer)
+
+    def track(self, vi, verbose=False):        
+        assert isinstance(vi, vipy.video.Scene)
+        if not any([t.category().lower() == &#39;face&#39; for t in vi.tracklist()]):
+            warnings.warn(&#39;No face proposals&#39;)
+            return vi.clone()
+
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) &gt; 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best face track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  </code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="heyvi.detection.FaceTracker" href="#heyvi.detection.FaceTracker">FaceTracker</a></li>
+<li><a title="heyvi.detection.FaceDetector" href="#heyvi.detection.FaceDetector">FaceDetector</a></li>
+<li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="heyvi.detection.FaceTracker" href="#heyvi.detection.FaceTracker">FaceTracker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="heyvi.detection.FaceTracker.track" href="#heyvi.detection.FaceTracker.track">track</a></code></li>
+</ul>
+</li>
+</ul>
+</dd>
+<dt id="heyvi.detection.WeakAnnotationTracker"><code class="flex name class">
+<span>class <span class="ident">WeakAnnotationTracker</span></span>
+<span>(</span><span>minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=64)</span>
+</code></dt>
+<dd>
+<div class="desc"><p>heyvi.detection.WeakAnnotationTracker()</p>
+<p>Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking.</p>
+<h2 id="approach">Approach</h2>
+<ul>
+<li>THe input video should have weak tracks provided by live annotators with class names that intersect <code><a title="heyvi.detection.MultiscaleVideoTracker" href="#heyvi.detection.MultiscaleVideoTracker">MultiscaleVideoTracker</a></code>.</li>
+<li>Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording.
+</li>
+<li>This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.
+</li>
+<li>Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.</li>
+<li>The tracker compbines these rescored detections as in the VideoTracker.</li>
+<li>When done, each track is assigned to a proposal. </li>
+</ul>
+<p>Usage:</p>
+<pre><code class="language-python-repl">&gt;&gt;&gt; T = heyvi.detection.WeakAnnotationTracker()
+&gt;&gt;&gt; v = vipy.video.Scene(...)
+&gt;&gt;&gt; vt = T.track(v)
+&gt;&gt;&gt; vm = vt.combine(v.trackmap(lambda t: t.category('weak annotation')))
+</code></pre>
+<pre><code>- The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
+- All track and activities IDs are mapped appropriately from the input video.  
+- The combined video vm has both the weak annotation and the refined tracks.
+</code></pre></div>
+<details class="source">
+<summary>
+<span>Expand source code</span>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L425-L466" class="git-link">Browse git</a>
+</summary>
+<pre><code class="python">class WeakAnnotationTracker(MultiscaleVideoTracker):
+    &#34;&#34;&#34;heyvi.detection.WeakAnnotationTracker()
+
+    Given a weak annotation of an object bounding box from a human annotator, refine this weak annotation into a tight box using object detection proposals and tracking.
+    
+    Approach:
+        - THe input video should have weak tracks provided by live annotators with class names that intersect `heyvi.detection.MultiscaleVideoTracker`.
+        - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording.  
+        - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.  
+        - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.
+        - The tracker compbines these rescored detections as in the VideoTracker.
+        - When done, each track is assigned to a proposal. 
+
+    Usage:
+
+    &gt;&gt;&gt; T = heyvi.detection.WeakAnnotationTracker()
+    &gt;&gt;&gt; v = vipy.video.Scene(...)
+    &gt;&gt;&gt; vt = T.track(v)
+    &gt;&gt;&gt; vm = vt.combine(v.trackmap(lambda t: t.category(&#39;weak annotation&#39;)))
+
+        - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
+        - All track and activities IDs are mapped appropriately from the input video.  
+        - The combined video vm has both the weak annotation and the refined tracks.
+
+    &#34;&#34;&#34;
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=5, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=64):
+        # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
+        super().__init__(minconf=minconf, miniou=miniou, maxhistory=maxhistory, objects=None, trackconf=trackconf, verbose=verbose, gpu=gpu, batchsize=batchsize, weightfile=weightfile, overlapfrac=overlapfrac, detbatchsize=detbatchsize, gate=gate)
+
+    def _track(self, vi, stride=1, continuous=False, buffered=True):
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        return super()._track(vi, stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
+
+    def track(self, vi, verbose=False):
+        self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects
+        vt = super().track(vi.clone().cleartracks(), verbose=verbose)
+        if len(vt.tracks()) &gt; 0:
+            for ti in vi.tracklist():
+                t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best track for weak annotation
+                vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
+        return vt.trackfilter(lambda t: t.id() in vi.tracks())  </code></pre>
+</details>
+<h3>Ancestors</h3>
+<ul class="hlist">
+<li><a title="heyvi.detection.MultiscaleVideoTracker" href="#heyvi.detection.MultiscaleVideoTracker">MultiscaleVideoTracker</a></li>
+<li><a title="heyvi.detection.MultiscaleObjectDetector" href="#heyvi.detection.MultiscaleObjectDetector">MultiscaleObjectDetector</a></li>
+<li><a title="heyvi.detection.ObjectDetector" href="#heyvi.detection.ObjectDetector">ObjectDetector</a></li>
+<li><a title="heyvi.detection.Yolov5" href="#heyvi.detection.Yolov5">Yolov5</a></li>
+<li><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></li>
+</ul>
+<h3>Inherited members</h3>
+<ul class="hlist">
+<li><code><b><a title="heyvi.detection.MultiscaleVideoTracker" href="#heyvi.detection.MultiscaleVideoTracker">MultiscaleVideoTracker</a></b></code>:
+<ul class="hlist">
+<li><code><a title="heyvi.detection.MultiscaleVideoTracker.track" href="#heyvi.detection.MultiscaleVideoTracker.track">track</a></code></li>
+</ul>
+</li>
+</ul>
 </dd>
 <dt id="heyvi.detection.Yolov3"><code class="flex name class">
 <span>class <span class="ident">Yolov3</span></span>
@@ -1682,7 +1468,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L180-L239" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L180-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Yolov3(TorchNet):
     &#34;&#34;&#34;Yolov3 based object detector
@@ -1759,7 +1545,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L238-L239" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L238-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     return list(self._cls2index.keys())</code></pre>
@@ -1779,7 +1565,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L87-L177" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L87-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Yolov5(TorchNet):
     &#34;&#34;&#34;Yolov5 based object detector
@@ -1891,7 +1677,7 @@ def isallowable(v, actor_class, association_class, fps=None):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/detection.py#L176-L177" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/bb934016bc8843a9ecef87b9442e99028b293f4c/heyvi/detection.py#L176-L177" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     return list(self._cls2index.keys())</code></pre>
@@ -1979,9 +1765,6 @@ setTimeout(() => input.focus(), 100);
 </ul>
 </li>
 <li>
-<h4><code><a title="heyvi.detection.FaceProposalRefinement" href="#heyvi.detection.FaceProposalRefinement">FaceProposalRefinement</a></code></h4>
-</li>
-<li>
 <h4><code><a title="heyvi.detection.FaceTracker" href="#heyvi.detection.FaceTracker">FaceTracker</a></code></h4>
 <ul class="">
 <li><code><a title="heyvi.detection.FaceTracker.track" href="#heyvi.detection.FaceTracker.track">track</a></code></li>
@@ -2004,9 +1787,6 @@ setTimeout(() => input.focus(), 100);
 <h4><code><a title="heyvi.detection.ObjectDetector" href="#heyvi.detection.ObjectDetector">ObjectDetector</a></code></h4>
 </li>
 <li>
-<h4><code><a title="heyvi.detection.Proposal" href="#heyvi.detection.Proposal">Proposal</a></code></h4>
-</li>
-<li>
 <h4><code><a title="heyvi.detection.TorchNet" href="#heyvi.detection.TorchNet">TorchNet</a></code></h4>
 <ul class="">
 <li><code><a title="heyvi.detection.TorchNet.batchsize" href="#heyvi.detection.TorchNet.batchsize">batchsize</a></code></li>
@@ -2017,26 +1797,19 @@ setTimeout(() => input.focus(), 100);
 </ul>
 </li>
 <li>
-<h4><code><a title="heyvi.detection.TrackProposalRefinement" href="#heyvi.detection.TrackProposalRefinement">TrackProposalRefinement</a></code></h4>
-</li>
-<li>
 <h4><code><a title="heyvi.detection.VideoDetector" href="#heyvi.detection.VideoDetector">VideoDetector</a></code></h4>
-</li>
-<li>
-<h4><code><a title="heyvi.detection.VideoProposal" href="#heyvi.detection.VideoProposal">VideoProposal</a></code></h4>
-<ul class="">
-<li><code><a title="heyvi.detection.VideoProposal.allowable_objects" href="#heyvi.detection.VideoProposal.allowable_objects">allowable_objects</a></code></li>
-<li><code><a title="heyvi.detection.VideoProposal.isallowable" href="#heyvi.detection.VideoProposal.isallowable">isallowable</a></code></li>
-</ul>
-</li>
-<li>
-<h4><code><a title="heyvi.detection.VideoProposalRefinement" href="#heyvi.detection.VideoProposalRefinement">VideoProposalRefinement</a></code></h4>
 </li>
 <li>
 <h4><code><a title="heyvi.detection.VideoTracker" href="#heyvi.detection.VideoTracker">VideoTracker</a></code></h4>
 <ul class="">
 <li><code><a title="heyvi.detection.VideoTracker.track" href="#heyvi.detection.VideoTracker.track">track</a></code></li>
 </ul>
+</li>
+<li>
+<h4><code><a title="heyvi.detection.WeakAnnotationFaceTracker" href="#heyvi.detection.WeakAnnotationFaceTracker">WeakAnnotationFaceTracker</a></code></h4>
+</li>
+<li>
+<h4><code><a title="heyvi.detection.WeakAnnotationTracker" href="#heyvi.detection.WeakAnnotationTracker">WeakAnnotationTracker</a></code></h4>
 </li>
 <li>
 <h4><code><a title="heyvi.detection.Yolov3" href="#heyvi.detection.Yolov3">Yolov3</a></code></h4>
@@ -2056,7 +1829,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

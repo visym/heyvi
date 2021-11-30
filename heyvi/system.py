@@ -233,6 +233,7 @@ class CAP():
         assert torch.cuda.device_count() >= 4
         
         self._activitymodel = './cap_epoch_15_step_64063.ckpt'  # local testing only
+        #self._activitymodel = './cap_epoch_17_step_72071.ckpt'  # local testing only        
         self._annotator = lambda im, f=vipy.image.mutator_show_trackindex_verbonly(confidence=True): f(im).annotate(timestamp=heyvi.util.timestamp(), timestampoffset=(6,10), fontsize=15).rgb()
         
     def __call__(self, vi, vs=None, minconf=0.04, verbose=True, frame_callback=None, livestream=False):
