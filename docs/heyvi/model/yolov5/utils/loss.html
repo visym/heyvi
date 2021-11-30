@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>heyvi.model.yolov5.utils.loss API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L0-L204" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L1-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># Loss functions
 
@@ -249,7 +249,7 @@ def build_targets(p, targets, model):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L151-L205" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L151-L205" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def build_targets(p, targets, model):
     # Build targets for compute_loss(), input targets(image,class,x,y,w,h)
@@ -316,7 +316,7 @@ def build_targets(p, targets, model):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L88-L148" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L88-L148" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def compute_loss(p, targets, model):  # predictions, targets, model
     device = targets.device
@@ -389,7 +389,7 @@ def build_targets(p, targets, model):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L10-L12" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L10-L12" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def smooth_BCE(eps=0.1):  # https://github.com/ultralytics/yolov3/issues/238#issuecomment-598028441
     # return positive, negative label smoothing BCE targets
@@ -432,7 +432,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L15-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L15-L29" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BCEBlurWithLogitsLoss(nn.Module):
     # BCEwithLogitLoss() with reduced missing label effects.
@@ -483,7 +483,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L22-L29" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L22-L29" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, pred, true):
     loss = self.loss_fcn(pred, true)
@@ -528,7 +528,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L32-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L32-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FocalLoss(nn.Module):
     # Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
@@ -592,7 +592,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L42-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L42-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, pred, true):
     loss = self.loss_fcn(pred, true)
@@ -647,7 +647,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L62-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L62-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class QFocalLoss(nn.Module):
     # Wraps Quality focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
@@ -707,7 +707,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cf491389f91d34a28e12aa30b28e8dd5e5063759/heyvi/model/yolov5/utils/loss.py#L72-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/loss.py#L72-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, pred, true):
     loss = self.loss_fcn(pred, true)
@@ -831,7 +831,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
