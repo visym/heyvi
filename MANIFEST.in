@@ -1,4 +1,4 @@
 include LICENSE *.md *.py *.jpg
-global-include *.py *.jpg *.yaml *.names
+global-include *.py *.jpg *.yaml *.names *.txt *.csv *.json
 global-exclude *.webp *.html
 

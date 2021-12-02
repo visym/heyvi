@@ -1,0 +1,501 @@
+person_exits_scene_through_structure,Leaves scene
+person_stands_up,Stands
+person_talks_on_phone,Talks on phone
+person_talks_to_person,Talks to person
+person_enters_scene_through_structure,Comes into scene
+person_closes_car_door,Unloads
+person_picks_up_object,Picks up
+person_enters_car,Opens
+person_opens_facility_door,Opens door
+person_sits_down,Sits down
+person_opens_car_trunk,Closing
+person_exits_car,Opens
+person_texts_on_phone,Texts on phone
+person_closes_facility_door,Closes door
+person_opens_car_door,Opens
+person_puts_down_object,Puts down
+hand_interacts_with_person,Hold hands
+person_closes_car_trunk,Unloading
+person_purchases_from_cashier,Purchases (cashier)
+person_carries_heavy_object,Carries heavy object
+person_abandons_package,Abandons
+person_reads_document,Reads
+person_rides_bicycle,Rides
+person_transfers_object_to_person,Transfers
+person_embraces_person,Embraces person
+person_unloads_car,Unloads
+person_loads_car,Loads
+person_interacts_with_laptop,Interacts with laptop
+car_turns_right,Turns right
+car_turns_left,Turns left
+car_stops,Stops
+car_reverses,Reverses
+car_starts,Starts
+car_drops_off_person,Stops
+car_picks_up_person,Stops
+person_steals_object,Steals
+person_walks,Walks
+person_purchases_from_machine,Purchases (machine)
+person_transfers_object_to_car,Transferring
+car_moves,moves
+person_scratches_face,Scratches
+person_drops_object,Drops object
+person_picks_up_object_from_floor,Picks up object from floor
+person_interacts_with_handheld_game,Uses
+person_picks_up_object_from_countertop,Picks up object from countertop
+person_puts_down_object_on_countertop,Puts down object on countertop
+person_gestures_raise_hand,Gestures raise hand
+person_gestures_lower_hand,Gestures lower hand
+person_unlocks_door_with_keys,Unlocks door
+person_locks_door_with_keys,Locks door
+person_gestures_come_here,Come here sign
+person_gestures_peace,Peace sign
+person_nudges_person_with_elbow,Nudges with elbow
+person_touches_back_of_person,Touches back of person
+person_touches_face_of_person,Touches face of person
+person_picks_up_object_from_bed,Picks up object from bed
+person_puts_down_object_on_bed,Puts down object on bed
+person_gestures_thumbs_down,Gestures thumbs down
+person_waves_hand_over_object,Waves over
+person_opens_laptop,Opens laptop
+person_closes_laptop,Closes laptop
+person_bumps_into_wall,Bumps into
+person_waves_at_person,Waves at person
+person_opens_car_hood,Opens
+person_closes_car_hood,Closes
+person_exercises_with_lunges,Exercises with lunges
+person_reads_newspaper,Reads
+person_points_at_person,Points to
+person_gestures_thumbs_up,Gestures thumbs up
+person_squeezes_object,Squeezes
+person_cracks_knuckles,Cracks knuckles
+person_closes_door_with_foot,Closes
+person_gestures_swipe_left,Gestures swipe left
+person_gestures_swipe_right,Gestures swipe right
+person_opens_gate,Opens
+person_closes_gate,Closes
+person_trips_on_object_on_floor,Trips
+person_stands_up_from_floor,Stands up from floor
+person_carries_laundry_basket,Carries laundry basket
+person_squats,Squats
+person_picks_up_object_from_couch,Picks up object from couch
+person_puts_down_object_on_couch,Puts down object on couch
+person_picks_up_object_from_cabinet,Picks up
+person_puts_down_object_into_cabinet,Puts down
+person_exercises_with_jumping_jacks,Exercises with jumping jacks
+person_reads_magazine,Reads
+person_closes_door_with_hip,Closes
+person_carries_groceries,Carries groceries
+person_looks_at_hands_in_lap,Looks at
+person_interacts_with_tablet,Uses
+person_polishes_car_with_rag,Polishes
+person_kisses_cheek_of_person,Kisses cheek of person
+person_exercises_with_situp,Exercises with situp
+person_carries_furniture,Carries
+person_carries_bicycle,Carries
+person_exercises_with_pushup,Exercises with pushup
+person_bows,Bows
+person_sits_crisscross,Sits
+person_reads_book,Reads book
+person_gestures_swipe_up,Gestures swipe up
+person_gestures_swipe_down,Gestures swipe down
+person_looks_at_wristwatch,Looks at wristwatch
+person_kicks_car_tires,Kicks
+person_taps_object_with_finger,Taps
+person_pounds_shoulders_of_person,Pounds shoulders of person
+person_pushes_wheeled_cart,Pushes
+person_pulls_wheeled_cart,Pulls
+person_flips_up_car_wipers,Flips up
+person_flips_down_car_wipers,Flips down
+person_walks_around_car,Walks around
+person_opens_sliding_door,Opens
+person_closes_sliding_door,Closes
+person_drinks_from_bottle,Drinks from bottle
+person_shoves_person,Shoves
+person_jumps,Jumps
+person_eats_snack_from_bag,Eats snack from bag
+person_takes_off_glasses,Takes off glasses
+person_puts_on_glasses,Puts on glasses
+person_lies_down_on_couch,Lies down
+person_lies_down_on_bed,Lies down on bed
+person_puts_on_hat,Puts on hat
+person_takes_off_hat,Takes off hat
+person_puts_on_shoes,Puts on shoes
+person_takes_off_shoes,Takes off shoes
+person_laughs_with_person,Laughs
+person_lies_down_on_floor,Lies down
+person_puts_on_scarf,Puts on scarf
+person_takes_off_scarf,Takes off scarf
+person_takes_off_headphones,Takes off headphones
+person_puts_on_headphones,Puts on headphones
+person_takes_phone_from_pocket,Takes phone from pocket
+person_puts_phone_into_pocket,Puts phone in
+person_puts_on_gloves,Puts on gloves
+person_takes_off_gloves,Takes off gloves
+person_wipes_mouth_with_napkin,Wipes mouth with napkin
+person_drinks_from_straw,Drinks
+person_grabs_person_by_forearm,Grabs
+person_puts_on_jacket,Puts on jacket
+person_zips_up_jacket,Zips up jacket
+person_unzips_jacket,Unzips jacket
+person_takes_off_jacket,Takes off jacket
+person_grabs_person_by_bicep,Grabs
+person_grabs_person_by_shoulder,Grabs
+person_spins_person_around,Spins around
+person_grabs_person_by_hair,Grabs
+person_carries_person_over_shoulder,Carries
+person_puts_down_person,Puts down
+person_picks_up_person,Picks up
+person_searches_in_backback,Searches in backback
+person_takes_object_from_backpack,Takes object from backpack
+person_puts_object_into_backpack,Puts object into backpack
+person_searches_in_purse,Searches
+person_puts_object_into_purse,Puts object into purse
+person_takes_object_from_purse,Takes from
+person_takes_off_facemask,Takes off facemask
+person_puts_on_facemask,Puts on facemask
+person_sweeps_floor,Sweeps
+person_vacuums_carpet,Vacuums carpet
+person_tucks_in_shirt,Tucks in shirt
+person_untucks_shirt,Untucks
+person_applies_deodorant,Uses deodorant
+person_claps_hands,Claps
+person_puts_feet_up,Puts feet up
+person_climbs_up_stairs,Climbs up stairs
+person_climbs_down_stairs,Climbs down stairs
+person_kneels,Kneels
+person_jumps_into_pool,Jumps into pool
+person_exits_pool,Exits pool
+person_puts_on_belt,Puts on belt
+person_takes_off_belt,Takes off
+person_picks_up_object_from_table,Picks up object from table
+person_drinks_from_shotglass,Drinks from shotglass
+person_puts_down_object_on_table,Puts down object on table
+person_karate_kicks,Karate kicks
+person_karate_chop,Karate chop
+person_hikes_up_pants,Adjusts pants
+person_opens_curtains,Opens curtains
+person_closes_curtains,Closes curtains
+person_puts_on_necklace,Puts on necklace
+person_takes_off_necklace,Takes off
+person_slaps_hands_on_thighs,Slaps
+person_flosses,Flosses
+person_plugs_into_electrical_socket,Plugs
+person_unplugs_from_electrical_socket,Unplugs
+person_brushes_teeth,Brushes
+person_puts_on_socks,Puts on socks
+person_takes_off_socks,Takes off socks
+person_puts_on_sunglasses,Puts on sunglasses
+person_takes_off_sunglasses,Takes off
+person_punches,Punches
+person_brushes_hair,Brushes hair
+person_crawls,Crawls
+person_applies_sunscreen,Uses sunscreen
+person_drinks_from_mug,Drinks from mug
+person_stretches_back,Stretches back
+person_stretches_arms_to_side,Stretches arms to side
+person_stretches_arms_over_head,Stretches arms over head
+person_unscrews_lid_from_bottle,Unscrews lid from bottle
+person_pours_liquid_into_cup,Pours liquid into cup
+person_screws_lid_to_bottle,Screws lid to bottle
+person_ties_jacket_around_waist,Ties
+person_unties_jacket_around_waist,Unties
+person_crosses_arms,Crosses arms
+person_opens_home_window,Opens home window
+person_closes_home_window,Closes home window
+person_puts_on_wristwatch,Puts on wristwatch
+person_takes_off_wristwatch,Takes off
+person_turns_off_fan,Turns off fan
+person_turns_on_fan,Turns on fan
+person_puts_on_ring,Puts on ring
+person_takes_off_ring,Takes off
+person_opens_closet_door,Opens
+person_closes_closet_door,Closes
+person_pulls_wheeled_trashcan,Pulls trashcan
+person_pushes_wheeled_trashcan,Pushes trashcan
+person_drums_on_chest,Drums
+person_eats_with_hands,Eats with hands
+person_snaps_fingers,Snaps
+person_folds_socks,Folds socks
+person_dries_dish,Dries dish
+person_puts_on_earrings,Puts on earrings
+person_takes_off_earrings,Takes off
+person_folds_pants,Folds pants
+person_sprays_from_bottle,Sprays from bottle
+person_opens_microwave,Opens microwave
+person_puts_object_into_microwave,Puts object into microwave
+person_closes_microwave,Closes microwave
+person_takes_object_from_microwave,Takes object from microwave
+person_unloads_dishwasher,Unloads dishwasher
+person_washes_hands,Washes hands
+person_dries_hands_with_towel,Dries hands with towel
+person_washes_dish,Washes dish
+person_applies_lip_makeup,Applies
+person_opens_refrigerator,Opens refrigerator
+person_takes_object_from_refrigerator,Takes object from refrigerator
+person_closes_refrigerator,Closes refrigerator
+person_puts_object_into_refrigerator,Puts object into refrigerator
+person_eats_with_utensil,Eats with utensil
+person_opens_cabinet,Opens cabinet
+person_closes_cabinet,Closes cabinet
+person_licks_fingers,Licks
+person_applies_facial_moisturizer,Uses moisturizer
+person_unloads_clotheswasher,Unloads
+person_loads_dryer,Loads
+person_takes_clothes_from_dresser,Takes from
+person_puts_clothes_into_dresser,Puts into
+person_removes_trashbag_from_trashcan,Removes trashbag from trashcan
+person_inserts_trashbag_into_trashcan,Inserts trashbag into trashcan
+person_turns_on_lamp,Turns on
+person_turns_off_lamp,Turns off
+person_throws_object_to_person,Throws object to person
+person_catches_object_from_person,Catches
+person_waters_houseplant,Waters
+person_applies_foundation_makeup,Applies
+person_folds_shirt,Folds shirt
+person_takes_medicine_pills,Takes pills
+person_drinks_from_cup,Drinks from cup
+person_opens_mailbox,Opens
+person_closes_mailbox,Closes mailbox
+person_blows_into_hands,Blows
+person_puts_fingers_in_ear,Put into ears
+person_cleans_table_with_rag,Cleans table with rag
+person_loads_dishwasher,Loads
+person_discards_trash,Discards trash
+person_lights_candle,Lights candle
+person_extinguishes_candle,Extinguishes candle
+person_falls_into_pool,Falls into pool
+person_yawns,Yawns
+person_opens_dresser_drawer,Opens
+person_closes_dresser_drawer,Closes
+person_pulls_out_chair,Pulls out chair
+person_pushes_in_chair,Pushes in chair
+person_kicks_object_to_person,Kicks object
+person_puts_clothes_into_closet,Puts into
+person_takes_clothes_from_closet,Takes clothes from closet
+person_looks_over_shoulder,Looks over
+person_pets_dog,Pets dog
+person_nods_head,Nods head
+person_shakes_head,Shakes head
+person_applies_eye_makeup,Applies
+person_loads_clotheswasher,Loads
+person_unbuttons_shirt,Unbuttons
+person_buttons_shirt,Buttons shirt
+person_opens_jar,Opens
+person_closes_jar,Closes
+person_falls_from_bed,Falls from bed
+person_falls_from_chair,Falls from chair
+person_hugs_cat,Hugs cat
+person_prays,Prays
+person_takes_selfie,Takes selfie
+person_puts_hair_in_ponytail,Puts hair in ponytail
+person_takes_off_hairtie,Removes hairtie
+person_hugs_dog,Hugs dog
+person_pets_cat,Pets cat
+person_picks_up_object_from_shelf,Picks up object from shelf
+person_puts_down_object_on_shelf,Puts down object on shelf
+person_shrugs,Shrugs
+person_opens_can_with_can_opener,Opens
+person_rubs_neck,Rubs
+person_takes_selfie_with_person,Takes selfie
+person_wiggles_hips,Wiggles
+person_dances_in_place,Dances in place
+person_trips_on_stair,Trips on stair
+person_sneezees into arm,Sneezees into arm
+person_throws_object_on_table,Throws
+person_touches_earlobe,Touches ear
+person_twirls,Twirls
+person_unloads_dryer,Unloads
+person_shades_eyes,Shades eyes
+person_washes_face,Washes
+person_dries_face_with_towel,Dries
+person_throws_object_to_ground,Throws
+person_tickles_person,Tickles
+person_bumps_into_person,Bumps into person
+person_throws_object_on_bed,Throws
+person_rubs_eyes,Rubs
+person_stubs_toe,Stubs toe
+person_sneezes_into_hand,Sneezes into hand
+person_vapes,Vapes
+person_tears_paper,Tears paper
+person_spills_on_table,Spills on table
+person_sets_upright_glass,Sets upright glass
+person_covers_friend_with_blanket,Covers friend with blanket
+person_uncovers_friend_with_blanket,Uncovers friend with blanket
+person_takes_off_boots,Takes off boots
+person_puts_on_boots,Puts on boots
+person_uses_television_remote,Uses television remote
+person_sets_table,Sets table
+person_puts_on_apron,Puts on apron
+person_takes_off_apron,Takes off apron
+person_turns_on_stovetop,Turns on stovetop
+person_turns_off_stovetop,Turns off stovetop
+person_spreads_tablecloth,Spreads tablecloth
+person_folds_tablecloth,Folds tablecloth
+person_folds_blanket,Folds blanket
+person_unfolds_blanket,Unfolds blanket
+person_covers_with_blanket,Covers with blanket
+person_uncovers_with_blanket,Uncovers with blanket
+person_crumples_paper,Crumples paper
+person_sets_upright_furniture,Sets upright furniture
+person_knocks_over_furniture,Knock over furniture
+person_knocks_over_glass,Knocks over glass
+person_loads_groceries_into_refrigerator,Loads groceries (refrigerator)
+person_uncovers_with_bedsheets,Uncovers with bedsheets
+person_covers_with_bedsheets,Covers with bedsheets
+person_clips_fingernails,Clips fingernails
+person_loads_groceries_into_cabinet,Loads groceries (cabinet)
+person_files_fingernails,Files fingernails
+person_loads_clothes_into_suitcase,Loads clothes into suitcase
+person_mops,Mops
+person_spills_on_floor,Spills on floor
+person_washes_window,Washes window
+person_unloads_clothes_from_suitcase,Unloads clothes from suitcase
+person_puts_on_backpack,Puts on backpack
+person_takes_off_backpack,Takes off backpack
+person_opens_jewelry_box,Opens jewelry box
+person_searches_jewelry_box,Searches jewelry box
+person_closes_jewelry_box,Closes jewelry box
+person_lifts_dummbells,Lifts dumbbells
+person_swats_bug,Swats bug
+person_irons_clothes,Irons clothes
+person_uses_bodyweight_scale,Uses scale
+person_makes_bed,Makes bed
+person_unloads_box_onto_floor,Unloads box (floor)
+person_unloads_box_onto_table,Unloads box (table)
+person_searches_in_cabinet,Searches (cabinet)
+person_dusts_furniture,Dusts furniture
+person_handstand,Handstands
+person_opens_beverage_can,Opens beverage can
+person_drinks_from_beverage_can,Drinks from beverage can
+person_somersaults,Somersaults
+person_jumps_on_couch,Jumps on couch
+person_climbs_up_ladder,Climbs up ladder
+person_climbs_down_ladder,Climbs down ladder
+person_covers_face_with_hands,Covers face
+person_climbs_on_table,Climbs on table
+person_climbs_off_table,Climbs off table
+person_arranges_flowers_in_vase,Arranges flowers
+person_crosses_legs,Crosses legs
+person_climbs_on_chair,Climbs on chair
+person_climbs_off_chair,Climbs off chair
+person_bumps_into_table,Bumps into
+person_climbs_on_couch,Climbs on couch
+person_climbs_off_couch,Climbs off couch
+person_opens_box,Opens box
+person_closes_box,Closes box
+person_cleans_dryer_lint_trap,Cleans
+person_strokes_hair,Strokes hair
+person_puts_on_shirt,Puts on shirt
+person_takes_off_shirt,Takes off
+person_applies_shaving_cream,Applies
+person_shaves_face,Shaves
+person_jumps_on_bed,Jumps on bed
+person_puts_hands_in_back_pockets,Puts hands in
+person_searches_in_bag,Searches in bag
+person_folds_towel,Folds towel
+person_puts_on_pants,Puts on pants
+person_takes_object_from_toaster,Takes from
+person_puts_object_into_toaster,Puts into
+person_searches_under_couch,Searches
+person_puts_up_picture_frame,Puts up picture frame
+person_takes_down_picture_frame,Takes down picture frame
+person_strokes_chin,Strokes chin
+person_hugs_stuffed_animal,Hugs stuffy
+person_crawls_out_from_under_vehicle,Crawls
+person_puts_on_hoodie,Puts on hoodie
+person_takes_off_hoodie,Takes off hoodie
+person_searches_in_box,Searches in box
+person_adjusts_thermostat,Adjusts
+person_stirs_mug,Stirs
+person_opens_oven_door,Opens oven door
+person_closes_oven_door,Closes oven door
+person_burns_hand,Burns hand
+person_searches_in_couch,Searches couch
+person_salutes,Salutes
+person_crates_dog,Crates dog
+person_uncrates_dog,Uncrates dog
+person_bounces_ball_on_floor,Bounces ball on floor
+person_takes_off_pants,Takes off pants
+person_puts_object_into_oven,Puts object into oven
+person_takes_object_from_oven,Takes object from oven
+person_searches_under_bed,Searches
+person_attaches_leash_to_dog,Attaches leash to dog
+person_unattaches_leash_from_dog,Unattaches leash
+person_takes_down_smoke_detector,Takes down
+person_puts_up_smoke_detector,Puts up
+person_holds_object_above_head,Holds object up
+person_rubs_foot,Rubs foot
+person_gestures_listen_closely,Gestures listen closely
+person_gestures_blow_kiss,Gestures blow kiss
+person_dries_hair_with_hairdryer,Blow dries hair
+person_gestures_cut,Gestures cut
+person_gestures_watch_closely,Gestures watch closely
+person_gestures_be_quiet,Gestures be quiet
+person_blows_nose,Blows nose
+person_sticks_out_tongue,Sticks out tongue
+person_dries_hair_with_towel,Towel dries hair
+person_gestures_arms_x,Gestures arms X
+person_gestures_behind_me,Gestures behind me
+person_pats_head,Pats head
+person_puts_on_necktie,Puts on necktie
+person_takes_off_necktie,Takes off necktie
+person_paints_fingernails,Paints fingernails
+person_wraps_box,Wraps box
+person_carries_person_on_shoulders,Carries person on shoulders
+person_braids_hair_of_person,Braids hair
+person_carries_person_on_back,Carries person on back
+person_gestures_hang_loose,Gestures hang loose
+person_throws_object_into_air,Throws object into air
+person_gestures_zoom_in,Gestures zoom in
+person_gestures_zoom_out,Gestures zoom out
+person_gestures_number_four,Gestures number four
+person_brushes_hair_of_person,Brushes hair of person
+person_gestures_heart,Gestures heart
+person_gestures_number_one,Gestures number one
+person_gestures_number_five,Gestures number five
+person_gestures_number_three,Gestures number three
+person_gestures_call_me,Gestures call me
+person_gestures_stop,Gestures stop
+person_walks_tiptoe,Walks tiptoe
+person_pours_coffee_into_mug,Pours coffee
+person_hugs_person_from_behind,Hugs from behind
+person_opens_clothes_washer,Opens clothes washer
+person_closes_clothes_washer,Closes clothes washer
+person_pours_into_bowl,Pours into bowl
+person_searches_in_kitchen_drawer,Searches in kitchen drawer
+person_puts_down_object_on_floor,Puts down object on floor
+person_falls_while_standing,Falls while standing
+person_opens_suitcase,Opens suitcase
+person_closes_suitcase,Closes suitcase
+person_opens_kitchen_drawer,Opens kitchen drawer
+person_closes_kitchen_drawer,Closes kitchen drawer
+person_turns_off_faucet,Turns off faucet
+person_takes_object_from_cabinet,Takes object from cabinet
+person_takes_object_from_kitchen_drawer,Takes object from kitchen drawer
+person_puts_object_into_kitchen_drawer,Puts object into kitchen drawer
+person_turns_on_faucet,Turns on faucet
+person_texts_on_phone_while_sitting,Texts on phone while sitting
+person_exercises_with_plank,Exercises with plank
+person_takes_object_from_bag,Takes object from bag
+person_puts_object_in_cabinet,Puts object in cabinet
+person_hits_person_with_pillow,Hits with pillow
+person_takes_object_from_basket,Takes object from basket
+person_puts_object_into_basket,Puts object into basket
+person_catches_dropped_object,Catches dropped object
+person_eats_apple,Eats apple
+person_eats_banana,Eats banana
+person_puts_object_into_bag,Puts object into bag
+person_opens_dishwasher,Opens dishwasher
+person_closes_dishwasher,Closes dishwasher
+person_leaves_scene_through_structure,Leaves scene
+person_feeds_cat,Feeds cat
+person_points_to_dog,Points to dog
+person_throws_object_to_dog,Throws object to dog
+person_feeds_dog,Feeds dog
+person_embraces_sitting_person,Embraces sitting person
+person_holds_hand,Holds hand
+person_shakes_hand,Shakes hand
+person_takes_object_from_box,Takes object from box
+person_puts_object_into_box,Puts object into box
+person_cleans_eyeglasses,Cleans eyeglasses
