@@ -491,7 +491,6 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         return f(v) if v is not None else f
 
     def calibration(self, x_logits):
-        import scipy.special
         assert torch.is_tensor(self._calibration_multiclass) and self._calibration_multiclass.shape == (1,1)
         assert torch.is_tensor(self._calibration_binary) and self._calibration_binary.shape == (3, self.num_classes())
         (n, T, (w,b,o), eps) = (self.num_classes(), self._calibration_multiclass, self._calibration_binary, np.finfo(np.float64).eps)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
