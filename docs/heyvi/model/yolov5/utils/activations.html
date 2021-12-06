@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>heyvi.model.yolov5.utils.activations API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L1-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L0-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># Activation functions
 
@@ -141,7 +141,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L65-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L65-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FReLU(nn.Module):
     def __init__(self, c1, k=3):  # ch_in, kernel
@@ -185,7 +185,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L71-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L71-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return torch.max(x, self.bn(self.conv(x)))</code></pre>
@@ -223,7 +223,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L15-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L15-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Hardswish(nn.Module):  # export-friendly version of nn.Hardswish()
     @staticmethod
@@ -264,7 +264,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L16-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L16-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -304,7 +304,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L46-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L46-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MemoryEfficientMish(nn.Module):
     class F(torch.autograd.Function):
@@ -389,7 +389,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L60-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L60-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.F.apply(x)</code></pre>
@@ -427,7 +427,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L22-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L22-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MemoryEfficientSwish(nn.Module):
     class F(torch.autograd.Function):
@@ -511,7 +511,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L35-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L35-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.F.apply(x)</code></pre>
@@ -549,7 +549,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L40-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L40-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Mish(nn.Module):
     @staticmethod
@@ -589,7 +589,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L41-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L41-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -628,7 +628,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L9-L12" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L9-L12" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Swish(nn.Module):  #
     @staticmethod
@@ -668,7 +668,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/yolov5/utils/activations.py#L10-L12" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/yolov5/utils/activations.py#L10-L12" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -800,7 +800,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>

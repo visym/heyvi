@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.10.0" />
+<meta name="generator" content="pdoc 0.9.2" />
 <title>heyvi.model.ResNets_3D_PyTorch.resnet API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L1-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L0-L233" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import math
 from functools import partial
@@ -278,7 +278,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv1x1x1(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -296,7 +296,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv3x3x3(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -315,7 +315,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L216-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L216-L234" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def generate_model(model_depth, **kwargs):
     assert model_depth in [10, 18, 34, 50, 101, 152, 200]
@@ -346,7 +346,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_inplanes():
     return [64, 128, 256, 512]</code></pre>
@@ -388,7 +388,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BasicBlock(nn.Module):
     expansion = 1
@@ -459,7 +459,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -513,7 +513,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Bottleneck(nn.Module):
     expansion = 4
@@ -590,7 +590,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -648,7 +648,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L213" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ResNet(nn.Module):
 
@@ -796,7 +796,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e277153f12c5f65f5ffa2cbf20818907ef2e2bea/heyvi/model/ResNets_3D_PyTorch/resnet.py#L196-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/ad2e665c99c1fcfcfb7f5efd57752ba029eaa321/heyvi/model/ResNets_3D_PyTorch/resnet.py#L196-L213" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     x = self.conv1(x)
@@ -927,7 +927,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
 </footer>
 </body>
 </html>
