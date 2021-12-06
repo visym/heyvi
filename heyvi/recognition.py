@@ -93,7 +93,6 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
         import heyvi.model.ResNets_3D_PyTorch.resnet
-
         
         super().__init__()
         self._input_size = 112
@@ -153,7 +152,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         y_hat = self.forward(x)
         y_hat_softmax = F.softmax(y_hat, dim=1)
 
-        (loss, n_valid, y_classindex) = (0, 0, [])
+        (loss, n_valid, y_validation) = (0, 0, [])
         C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
         for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
             labels = json.loads(labelstr)
@@ -186,13 +185,13 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                     loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), F.one_hot(torch.tensor([self._class_to_index[y]], device=y_hat.device), num_classes=len(C)).type(yh.type()), weight=C)
 
             n_valid += 1
-            y_classindex.append( self._class_to_index[max(lbllist, key=lbllist.count)] if len(lbllist) > 0 else None )   # most frequent label in clip
-
+            if len(lbllist) > 0:
+                y_validation.append( (yh, self._class_to_index[max(lbllist, key=lbllist.count)]) )  # most frequent label in clip
         loss = loss / float(max(1, n_valid))  # batch reduction: mean
 
         if logging:
             self.log('train_loss', loss, on_step=True, on_epoch=True, prog_bar=True, logger=True)
-        return loss if not valstep else {'loss': loss, 'logit': torch.stack([x for (x,c) in zip(y_hat, y_classindex) if c is not None]), 'classindex': [x for x in y_classindex if x is not None]}
+        return loss if not valstep else {'loss': loss, 'logit': torch.stack([x for (x,c) in y_validation]), 'classindex': [c for (x,c) in y_validation]}
 
     def validation_step(self, batch, batch_nb):
         loss = self.training_step(batch, batch_nb, logging=False, valstep=True)['loss']
@@ -419,12 +418,12 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         
         # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
         # - WARNING: under-represented classes are truncated at a maximum weight of one
-        self._class_to_training_weight = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_training_weight.csv')))
+        # - python 3.7 can use importlib.resources
+        self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_training_weight.csv'))}
         self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
         # Generated using vipy.dataset.Dataset.class_to_index()
-        self._class_to_index = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv')))
-        
+        self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
         self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()}
 
         # Generated using vipy.dataset.Dataset.class_to_shortlabel()        
@@ -454,20 +453,20 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
                 'classindex': outputs['classindex']}
 
     def validation_epoch_end(self, outputs):        
-        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+        avg_loss = torch.cat([x['val_loss'].flatten() for x in outputs]).mean()
         self.log('val_loss', avg_loss, on_epoch=True, prog_bar=False, logger=True)
         self.log('avg_val_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)  # for checkpointing
 
         # Calibration: will be saved as registered buffer in checkpoint for calibration
         if self.trainer.is_global_zero:
             from netcal.scaling import LogisticCalibration, TemperatureScaling
-            logits = torch.stack([x for output in outputs for x in output['logit']]).squeeze().detach().cpu().numpy()
-            ground_truth = torch.stack([x for output in outputs for x in output['classindex']]).flatten().detach().cpu().numpy()
+            logits = torch.stack([x for output in outputs for x in output['logit']]).detach().cpu().numpy()
+            ground_truth = torch.cat([x.flatten() for output in outputs for x in output['classindex']]).flatten().detach().cpu().numpy()
             multiclass = TemperatureScaling()
             multiclass.fit(F.softmax(torch.from_numpy(logits), dim=1).cpu().numpy(), ground_truth)
             binary = {k:(LogisticCalibration(), float(np.mean(logits[:,k]))) for k in sorted(self.class_to_index().values())}
             for (k,(b,m)) in binary.items():
-                (binary_confidences, binary_ground_truth) = (torch.sigmoid(torch.from_numpy(logits[:,k]-m)).cpu().numpy(), np.array([1 if y==k else 0 for y in ground_truth]))
+                (binary_confidences, binary_ground_truth) = (torch.sigmoid(torch.from_numpy(logits[:,k]-m).flatten()).cpu().numpy(), np.array([1 if y==k else 0 for y in ground_truth]))
                 if np.any(binary_ground_truth):
                     b.fit(binary_confidences, binary_ground_truth)
                 else:
@@ -494,7 +493,7 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         assert torch.is_tensor(self._calibration_multiclass) and self._calibration_multiclass.shape == (1,1)
         assert torch.is_tensor(self._calibration_binary) and self._calibration_binary.shape == (3, self.num_classes())
         (T, (w,b,o)) = (self._calibration_multiclass, self._calibration_binary)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
-        return torch.multiply(F.softmax(x_logits / T, dim=1), torch.sigmoid(torch.multiply(x_logits-o, w) + b))  # Batch x Class -> (Temperature calibrated softmax probability)*(logistic calibrated binary class probability) 
+        return torch.multiply(F.softmax(x_logits / T, dim=1), torch.multiply(torch.sigmoid(torch.multiply(x_logits-o, w) + b), o!=0))  # Batch x Class -> (Temperature calibrated softmax probability)*(logistic calibrated binary class probability) 
 
 
 class ActivityTracker(PIP_370k):
