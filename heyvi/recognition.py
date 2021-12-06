@@ -490,12 +490,19 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         return f(v) if v is not None else f
 
     def calibration(self, x_logits):
+        import scipy.special
         assert torch.is_tensor(self._calibration_multiclass) and self._calibration_multiclass.shape == (1,1)
         assert torch.is_tensor(self._calibration_binary) and self._calibration_binary.shape == (3, self.num_classes())
-        (T, (w,b,o)) = (self._calibration_multiclass, self._calibration_binary)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
-        return torch.multiply(F.softmax(x_logits / T, dim=1), torch.multiply(torch.sigmoid(torch.multiply(x_logits-o, w) + b), o!=0))  # Batch x Class -> (Temperature calibrated softmax probability)*(logistic calibrated binary class probability) 
+        (n, T, (w,b,o), eps) = (self.num_classes(), self._calibration_multiclass, self._calibration_binary, np.finfo(np.float64).eps)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
 
+        #lr = torch.from_numpy(np.multiply(1.0/(1+np.exp(-(np.multiply(np.array(w*0 + 1).reshape(1,n).astype(np.float64), scipy.special.logit(np.clip(torch.sigmoid(x_logits-o.view(1,n)).detach().cpu().numpy().astype(np.float64), eps, 1-eps))))+np.array(b).reshape(1,n).astype(np.float64))), (np.array(o)!=0).reshape(1,n)).astype(np.float32))        
+        #sm = F.softmax(torch.log(torch.clamp(F.softmax(x_logits, dim=1), eps, 1-eps)) / T, dim=1)
+        
+        sm = F.softmax(x_logits / T, dim=1)  # temperature only
+        lr = torch.multiply(torch.sigmoid(x_logits-o.view(1,n)+b.view(1,n)), (o!=0).view(1,n))   # bias only
+        return torch.multiply(sm, lr)
 
+        
 class ActivityTracker(PIP_370k):
     """Video Activity detection.
         
@@ -571,7 +578,11 @@ class ActivityTracker(PIP_370k):
         """Return a list of lists [(class_label, float(softmax), float(logit) ... ] for all classes and batches"""
         yh = x_logits.detach().cpu().numpy()        
         yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
-        return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
+        if not self._bce:
+            return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
+        else:
+            yh_softmax = self.calibration(x_logits)
+            return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
 
     def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
         """In place filtering of video to finalize"""
@@ -603,8 +614,9 @@ class ActivityTracker(PIP_370k):
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) > (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
-        f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-        vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5 if not self._bce else 5)) if a.id() in tofinalize else a)
+        if not self._bce:
+            f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
+            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5 if not self._bce else 5)) if a.id() in tofinalize else a)
         
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])

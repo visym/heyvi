@@ -14,13 +14,12 @@ HEYVI provides:
 
 # Getting Started
 
-Create a video from a file and track the objects, then create an annotation visualization
+Create a video from a file and track the objects, then create an annotation visualization of the tracked video output (vo)
 
 ```python
 v = vipy.video.Scene(filename='/path/to/video.mp4').framerate(5)
 T = heyvi.system.Tracker()
-vo = T(v)
-vo.annotate('/path/to/annotation.mp4')
+vo = T(v).annotate('/path/to/annotation.mp4')
 ```
 
 Create a default RTSP camera and stream the privacy preserving annotated video (e.g. pixelated bounding boxes with captions) to a YouTube live stream.
