@@ -335,8 +335,8 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         
         try:
             v = v.download() if (not v.isloaded() and v.hasurl() and not v.hasfilename()) else v  # fetch it if necessary, but do not do this during training!        
-            vc = v.clone()  # this may no longer be necessary since stream iterators make threaded copies of the underlying frames
             if training or validation:
+                vc = v.clone()  # these frames are shared across all tracks, requires pixel clone                
                 random.seed()  # force randomness after fork() 
                 (clipstart, clipend) = vc.cliprange()  # clip (start, end) relative to video 
                 (clipstart, clipend) = (clipstart if clipstart is not None else 0,   
@@ -366,6 +366,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
                 vc = vc.resize(input_size, input_size)   
                 vc = vc.fliplr() if (doflip or (random.random() > 0.5)) and (noflip is None or vc.category() not in noflip) else vc
             else:
+                vc = v.clone(shallow=True)  # shallow clone, trackcrop() will result in new array, but v will be preserved
                 vc = vc.trackcrop(dilate=1.2, maxsquare=True)  # may be None if clip contains no track
                 vc = vc.resize(input_size, input_size)  # This may introduce a preview()
                 vc = vc.fliplr() if doflip and (noflip is None or vc.category() not in noflip) else vc
