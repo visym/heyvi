@@ -31,14 +31,16 @@ class ActivityRecognition(object):
     def __init__(self, pretrained=True):
         self.net =  None
         self._class_to_index = {}
+        self._index_to_class = None
         self._num_frames = 0
 
     def class_to_index(self, c=None):
         return self._class_to_index if c is None else self._class_to_index[c]
     
     def index_to_class(self, index=None):
-        d = {v:k for (k,v) in self.class_to_index().items()}
-        return d if index is None else d[index]
+        if self._index_to_class is None:
+            self._index_to_class = {v:k for (k,v) in self.class_to_index().items()}  # cache
+        return self._index_to_class if index is None else self._index_to_class[index]
     
     def classlist(self):
         return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order
@@ -47,7 +49,7 @@ class ActivityRecognition(object):
         return len(self.classlist())
 
     def fromindex(self, k):
-        index_to_class = {v:k for (k,v) in self.class_to_index().items()}
+        index_to_class = self.index_to_class()
         assert k in index_to_class, "Invalid class index '%s'" % (str(k))
         return index_to_class[k]
 
@@ -486,7 +488,7 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
     def totensor(self, v=None, training=False, validation=False, show=False, doflip=False, asjson=False):
         """Return captured lambda function if v=None, else return tensor"""    
         assert v is None or isinstance(v, vipy.video.Scene), "Invalid input"
-        f = (lambda v, num_frames=self._num_frames, input_size=self._input_size, mean=self._mean, std=self._std, training=training, validation=validation, show=show, classname=self.__class__.__name__:
+        f = (lambda v, num_frames=self._num_frames, input_size=self._input_size, mean=self._mean, std=self._std, training=training, validation=validation, show=show, classname=self.__class__.__name__, doflip=doflip, asjson=asjson:
              PIP_370k._totensor(v, training, validation, input_size, num_frames, mean, std, noflip=['car_turns_left', 'car_turns_right', 'vehicle_turns_left', 'vehicle_turns_right', 'motorcycle_turns_left', 'motorcycle_turns_right'], show=show, doflip=doflip, asjson=asjson, classname=classname))
         return f(v) if v is not None else f
 
@@ -578,11 +580,12 @@ class ActivityTracker(PIP_370k):
         """Return a list of lists [(class_label, float(softmax), float(logit) ... ] for all classes and batches"""
         yh = x_logits.detach().cpu().numpy()        
         yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
+        d = self.index_to_class()        
         if not self._bce:
-            return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
+            return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
         else:
             yh_softmax = self.calibration(x_logits)
-            return [[(self.index_to_class(j), float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
+            return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
 
     def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
         """In place filtering of video to finalize"""
