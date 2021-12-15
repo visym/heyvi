@@ -419,8 +419,8 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         """Batch tracking"""
         for v in self.stream(vi):
             if verbose:
-                print(vi)
-        return vi
+                print(v)
+        return v
         
 
 class WeakAnnotationTracker(MultiscaleVideoTracker):
@@ -437,6 +437,7 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         - The tracker compbines these rescored detections as in the VideoTracker.
         - When done, each proposal is assigned to one track, and track IDs and activity IDs are mappped accordingly. 
         - Activities that no longer overlap the actor track are removed
+        - The tracker is run at a lower framerate (5Hz) then tracks are resampled to the input framerate
 
     Usage:
 
@@ -462,12 +463,14 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         - The video vt will be a clone of v such that each track in vt will be a refined track of a track in v.  
         - All track and activities IDs are mapped appropriately from the input video.  
         - The combined video vm has both the weak annotation and the refined tracks.
+        - The tracker is run at a lower framerate (5Hz) then tracks are resampled to the input framerate.  This is useful for linear track interpolation. 
 
     """
-    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=128, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=256):
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=128, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=256, framerate=5):
         # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
         # Increased maxhistory with wide measurement assignment gate to reacquire lost tracks (detections are weighted by weak annotation alignment, so wide gate is low risk)
         super().__init__(minconf=minconf, miniou=miniou, maxhistory=maxhistory, objects=None, trackconf=trackconf, verbose=verbose, gpu=gpu, batchsize=batchsize, weightfile=weightfile, overlapfrac=overlapfrac, detbatchsize=detbatchsize, gate=gate)
+        self._framerate = framerate  # framerate of tracker
 
     def _track(self, vi, stride=1, continuous=False, buffered=True):
         # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
@@ -476,12 +479,14 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
 
     def track(self, vi, verbose=False):
         self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects
-        vt = super().track(vi.clone(), verbose=verbose)
+        vic = vi.clone().framerate(self._framerate)  # tracker cloned input (lower framerate)
+        vt = super().track(vic.clone(), verbose=verbose)  # tracker output (will call self._track)
         if len(vt.tracks()) > 0:
-            for ti in vi.tracklist():
+            for ti in vic.tracklist():
                 t = max(vt.tracklist(), key=lambda t: ti.iou(t)*t.confidence()*float(t.category().lower() == ti.category().lower()))  # best track for weak annotation
                 vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
-        return vt.trackfilter(lambda t: t.id() in vi.tracks()).activityfilter(lambda a: a.actorid() is not None and a.hastrackoverlap(vt.track(a.actorid())))
+        vt = vt.trackfilter(lambda t: t.id() in vic.tracks()).activityfilter(lambda a: a.actorid() is not None and a.hastrackoverlap(vt.track(a.actorid())))
+        return vt.framerate(vi.framerate())  # restore source framerate
             
 
 class WeakAnnotationFaceTracker(FaceTracker):    
@@ -497,11 +502,12 @@ class WeakAnnotationFaceTracker(FaceTracker):
         - Detections that maximally overlap the proposal with high detection confidence are proritized for track assignment.
         - The tracker compbines these rescored detections as in the VideoTracker.
         - When done, each track is assigned to a proposal. 
+        - The tracker is run at a lower framerate (5Hz) then tracks are resampled to the input framerate
 
     See also: `heyvi.detection.WeakAnnotationTracker`
     """
     
-    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=128, trackconf=0.005, gpu=None, gate=256):
+    def __init__(self, minconf=0.001, miniou=0.6, maxhistory=128, trackconf=0.005, gpu=None, gate=256, framerate=5):
         # Reduced default minimum confidence for detections and track confidence for spawning new tracks to encourage selection of best weak annotation box
         super().__init__(gpu=gpu)
         self._minconf = minconf
@@ -509,6 +515,7 @@ class WeakAnnotationFaceTracker(FaceTracker):
         self._trackconf = trackconf
         self._maxhistory = maxhistory
         self._miniou = miniou
+        self._framerate = framerate
 
     def __call__(self, vi, minconf, miniou, maxhistory, trackconf, gate, smoothing=None):
         # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
@@ -521,13 +528,13 @@ class WeakAnnotationFaceTracker(FaceTracker):
             warnings.warn('No face proposals')
             return vi.clone()
 
-        vic = vi.clone().trackfilter(lambda t: t.category().lower() in ['face','head', 'person']).clearactivities()
+        vic = vi.clone().framerate(self._framerate).trackfilter(lambda t: t.category().lower() in ['face','head', 'person']).clearactivities()
         vt = super().track(vic, verbose=verbose, maxhistory=self._maxhistory, minconf=self._minconf, trackconf=self._trackconf)
         if len(vt.tracks()) > 0:
             for ti in vic.tracklist():
                 t = max(vt.tracklist(), key=lambda t: max(ti.iou(t), ti.segmentcover(t))*t.confidence())  # best track for weak annotation
                 vt.rekey( tracks={t.id():ti.id()}, activities={} )  # set assigned track ID for activity association, no change to activities
-        return vt.trackfilter(lambda t: t.id() in vic.tracks())  
+        return vt.trackfilter(lambda t: t.id() in vic.tracks()).framerate(vi.framerate())  # restore source framerate  
     
 
 class ActorAssociation(MultiscaleVideoTracker):
