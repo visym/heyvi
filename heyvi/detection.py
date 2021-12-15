@@ -473,8 +473,8 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         self._framerate = framerate  # framerate of tracker
 
     def _track(self, vi, stride=1, continuous=False, buffered=True):
-        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
-        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the product of IoU and max cover with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1] + [a.iou(o)*a.cover(o) for a in ima.objects() if a.category().lower() == o.category().lower()])))
         return super()._track(vi.clone().cleartracks(), stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
     def track(self, vi, verbose=False):
