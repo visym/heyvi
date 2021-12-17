@@ -14,12 +14,12 @@ import heyvi.model.yolov5.models.yolo
 
 class TorchNet(object):
 
-    def gpu(self, idlist, batchsize=None):
+    def gpu(self, idlist=None, batchsize=None, n=None):
         assert batchsize is None or (isinstance(batchsize, int) and batchsize > 0), "Batchsize must be integer"
-        assert idlist is None or isinstance(idlist, int) or (isinstance(idlist, list) and len(idlist)>0), "Input must be a non-empty list of integer GPU ids"
+        assert idlist is None or n is not None or isinstance(idlist, int) or (isinstance(idlist, list) and len(idlist)>0), "Input must be a non-empty list of integer GPU ids"
         self._batchsize = int(batchsize if batchsize is not None else (self._batchsize if hasattr(self, '_batchsize') else 1))
 
-        idlist = tolist(idlist)
+        idlist = tolist(idlist) if idlist is not None else list(range(n))
         self._devices = ['cuda:%d' % k if k is not None and torch.cuda.is_available() and k != 'cpu' else 'cpu' for k in idlist]
         #self._tensortype = torch.cuda.FloatTensor if torch.cuda.is_available() else torch.FloatTensor       
         self._tensortype = torch.FloatTensor       
@@ -363,7 +363,7 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
         miniou: [float]: The minimum IoU of an object detection with a track to be considered for assignment
         maxhistory: [int]:  The maximum frame history lookback for assignment of a detection with a broken track
         smoothing: [str]:  Unused
-        objects: [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector`.
+        objects: [list]:  The list of allowable objects for tracking as supported by `heyvi.detection.MultiscaleObjectDetector.classlist`.
         trackconf: [float]: The minimum confidence of an unassigned detection to spawn a new track
         verbose: [bool]:  Logging verbosity
         gpu: [list]: List of GPU indexes to use
@@ -430,7 +430,7 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
     
     Approach:
 
-        - The input video should have weak tracks provided by live annotators with class names that intersect `heyvi.detection.MultiscaleVideoTracker`.
+        - The input video should have weak tracks provided by live annotators with class names that intersect `heyvi.detection.MultiscaleVideoTracker.classlist`.
         - Weak annotations are too loose, too tight, or poorly centered boxes provided by live annotators while recording.  
         - This function runs a low confidence object detector and rescores object detection confidences based on overlap with the proposal.  
         - Detections that maximally overlap the proposal with high detection confidence are proritized for tracking.
@@ -464,6 +464,7 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         - All track and activities IDs are mapped appropriately from the input video.  
         - The combined video vm has both the weak annotation and the refined tracks.
         - The tracker is run at a lower framerate (5Hz) then tracks are resampled to the input framerate.  This is useful for linear track interpolation. 
+        - The tracker does not handle synonyms or capitalization differences like 'motorcycle' vs. 'Motorbike'.  Be sure that the weak annotation input video overlaps with `heyvi.detection.MultiscaleVideoTracker.classlist`
 
     """
     def __init__(self, minconf=0.001, miniou=0.6, maxhistory=128, trackconf=0.005, verbose=False, gpu=None, batchsize=1, weightfile=None, overlapfrac=0, detbatchsize=None, gate=256, framerate=5):
@@ -473,12 +474,12 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         self._framerate = framerate  # framerate of tracker
 
     def _track(self, vi, stride=1, continuous=False, buffered=True):
-        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the product of IoU and max cover with a weak object annotation of the same category
-        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1] + [a.iou(o)*a.cover(o) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max of IoU and cover with a weak object annotation of the same category
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1] + [max(a.iou(o),a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
         return super()._track(vi.clone().cleartracks(), stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
     def track(self, vi, verbose=False):
-        self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects
+        self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects that are known (does not handle synonyms)
         vic = vi.clone().framerate(self._framerate)  # tracker cloned input (lower framerate)
         vt = super().track(vic.clone(), verbose=verbose)  # tracker output (will call self._track)
         if len(vt.tracks()) > 0:
