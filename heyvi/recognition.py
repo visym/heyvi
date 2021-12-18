@@ -26,6 +26,11 @@ import math
 import heyvi.label
 import heyvi.model.ResNets_3D_PyTorch.resnet
 
+try:
+    import scipy.special
+except:
+    pass 
+
 
 class ActivityRecognition(object):
     def __init__(self, pretrained=True):
@@ -497,11 +502,11 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         assert torch.is_tensor(self._calibration_binary) and self._calibration_binary.shape == (3, self.num_classes())
         (n, T, (w,b,o), eps) = (self.num_classes(), self._calibration_multiclass, self._calibration_binary, np.finfo(np.float64).eps)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
 
-        #lr = torch.from_numpy(np.multiply(1.0/(1+np.exp(-(np.multiply(np.array(w*0 + 1).reshape(1,n).astype(np.float64), scipy.special.logit(np.clip(torch.sigmoid(x_logits-o.view(1,n)).detach().cpu().numpy().astype(np.float64), eps, 1-eps))))+np.array(b).reshape(1,n).astype(np.float64))), (np.array(o)!=0).reshape(1,n)).astype(np.float32))        
-        #sm = F.softmax(torch.log(torch.clamp(F.softmax(x_logits, dim=1), eps, 1-eps)) / T, dim=1)
+        lr = torch.from_numpy(np.multiply(1.0/(1+np.exp(-(np.multiply(np.array(w*0 + 1).reshape(1,n).astype(np.float64), scipy.special.logit(np.clip(torch.sigmoid(x_logits-o.view(1,n)).detach().cpu().numpy().astype(np.float64), eps, 1-eps))))+np.array(b).reshape(1,n).astype(np.float64))), (np.array(o)!=0).reshape(1,n)).astype(np.float32))
+        sm = F.softmax(torch.log(torch.clamp(F.softmax(x_logits, dim=1), eps, 1-eps)) / T, dim=1)
         
-        sm = F.softmax(x_logits / T, dim=1)  # temperature only
-        lr = torch.multiply(torch.sigmoid(x_logits-o.view(1,n)+b.view(1,n)), (o!=0).view(1,n))   # bias only
+        #sm = F.softmax(x_logits / T, dim=1)  # temperature only
+        #lr = torch.multiply(torch.sigmoid(x_logits-o.view(1,n)+b.view(1,n)), (o!=0).view(1,n))   # bias only
         return torch.multiply(sm, lr)
 
         
