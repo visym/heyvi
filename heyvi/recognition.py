@@ -189,6 +189,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
                 if self._bce:
                     # Binary cross entropy for per-class calibration
+                    # - FIXME: this training loss is suspect
                     loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), F.one_hot(torch.tensor([self._class_to_index[y]], device=y_hat.device), num_classes=len(C)).type(yh.type()), weight=C)
 
             n_valid += 1
@@ -310,7 +311,9 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-        self._bce = bce        
+        self._bce = bce
+        self._calibrated = False
+        self._calibrated_constant = True
         if deterministic:
             np.random.seed(42)
         
@@ -409,7 +412,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True, calibrated_constant=False, calibrated=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -420,6 +423,8 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._mlfl = True
         self._mlbl = False
         self._bce = bce
+        self._calibrated_constant = calibrated_constant
+        self._calibrated = calibrated
         
         if deterministic:
             np.random.seed(42)
@@ -438,7 +443,7 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
 
         # Calibration state: trained at validation epoch end
-        if self._bce:
+        if self._calibrated:
             self.register_buffer('_calibration_multiclass', torch.zeros(1,1))
             self.register_buffer('_calibration_binary', torch.zeros(3,self.num_classes()))
 
@@ -586,7 +591,7 @@ class ActivityTracker(PIP_370k):
         yh = x_logits.detach().cpu().numpy()        
         yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
         d = self.index_to_class()        
-        if not self._bce:
+        if not self._calibrated:
             return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
         else:
             yh_softmax = self.calibration(x_logits)
@@ -622,9 +627,9 @@ class ActivityTracker(PIP_370k):
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) > (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
-        if not self._bce:
+        if self._calibrated_constant:
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5 if not self._bce else 5)) if a.id() in tofinalize else a)
+            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5)) if a.id() in tofinalize else a)
         
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
@@ -778,6 +783,8 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    pass
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, bce=False, calibrated=False, modelfile=None, calibrated_constant=False):
+        ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
+        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=bce, calibrated_constant=calibrated_constant, calibrated=calibrated)                
 
 
