@@ -313,7 +313,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._mlbl = mlbl
         self._bce = bce
         self._calibrated = False
-        self._calibrated_constant = True
+        self._calibrated_constant = -1.5
         if deterministic:
             np.random.seed(42)
         
@@ -412,7 +412,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True, calibrated_constant=False, calibrated=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True, calibrated_constant=2.84, calibrated=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -627,10 +627,10 @@ class ActivityTracker(PIP_370k):
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) > (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
-        if self._calibrated_constant:
+        if self._calibrated_constant is not None:
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], -1.5)) if a.id() in tofinalize else a)
-        
+            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], self._calibrated_constant)) if a.id() in tofinalize else a)  # -1.5 -> 2.84
+            
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
         newlist = [vo.add(vipy.activity.Activity(startframe=a.startframe(), endframe=a.endframe(), category='person_steals_object', shortlabel='steals', confidence=0.5*a.confidence(), framerate=vo.framerate(), actorid=a.actorid(), attributes={'pip':'person_picks_up_object'}))
