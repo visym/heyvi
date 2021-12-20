@@ -475,12 +475,12 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
 
     def _track(self, vi, stride=1, continuous=False, buffered=True):
         # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max of IoU and cover with a weak object annotation of the same category
-        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1] + [max(a.iou(o),a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-2] + [(a.iou(o)*a.cover(o)) for a in ima.objects() if a.category().lower() == o.category().lower()])))
         return super()._track(vi.clone().cleartracks(), stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
     def track(self, vi, verbose=False):
         self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects that are known (does not handle synonyms)
-        vic = vi.clone().framerate(self._framerate)  # tracker cloned input (lower framerate)
+        vic = vi.downloadif().clone().framerate(self._framerate)  # tracker cloned input (lower framerate)
         vt = super().track(vic.clone(), verbose=verbose)  # tracker output (will call self._track)
         if len(vt.tracks()) > 0:
             for ti in vic.tracklist():
@@ -520,7 +520,8 @@ class WeakAnnotationFaceTracker(FaceTracker):
 
     def __call__(self, vi, minconf, miniou, maxhistory, trackconf, gate, smoothing=None):
         # Object rescoring: Detection confidence of each object is rescored by multiplying confidence by the max IoU (or max cover) with a weak object annotation of the same category
-        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-1]+[max(a.iou(o), a.cover(o)) for a in ima.objects() if o.category().lower() in ['face','head'] and  a.category().lower() in ['face','head','person']])))
+        f_rescorer = lambda im, f, va=vi.clone(): im.objectmap(lambda o, ima=va.frame(f, noimage=True): o.confidence(o.confidence()*max([1e-2]+[(max(a.iou(o), a.cover(o)) if a.category().lower()=='person' else a.iou(o)*a.cover(o))
+                                                                                                                                                for a in ima.objects() if o.category().lower() in ['face','head'] and  a.category().lower() in ['face','head','person']])))
         return super().__call__(vi.clone().clear(), minconf=self._minconf, miniou=self._miniou, maxhistory=self._maxhistory, smoothing=None, trackconf=self._trackconf, rescore=f_rescorer, gate=self._gate)
 
     def track(self, vi, verbose=False):        
@@ -529,7 +530,7 @@ class WeakAnnotationFaceTracker(FaceTracker):
             warnings.warn('No face proposals')
             return vi.clone()
 
-        vic = vi.clone().framerate(self._framerate).trackfilter(lambda t: t.category().lower() in ['face','head', 'person']).clearactivities()
+        vic = vi.downloadif().clone().framerate(self._framerate).trackfilter(lambda t: t.category().lower() in ['face','head', 'person']).clearactivities()
         vt = super().track(vic, verbose=verbose, maxhistory=self._maxhistory, minconf=self._minconf, trackconf=self._trackconf)
         if len(vt.tracks()) > 0:
             for ti in vic.tracklist():
