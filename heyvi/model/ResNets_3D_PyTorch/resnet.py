@@ -111,6 +111,7 @@ class ResNet(nn.Module):
                  no_max_pool=False,
                  shortcut_type='B',
                  widen_factor=1.0,
+                 unitnorm=False,
                  n_classes=400):
         super().__init__()
 
@@ -118,6 +119,7 @@ class ResNet(nn.Module):
 
         self.in_planes = block_inplanes[0]
         self.no_max_pool = no_max_pool
+        self._unitnorm = unitnorm  # embedding layer
 
         self.conv1 = nn.Conv3d(n_input_channels,
                                self.in_planes,
@@ -208,6 +210,9 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
 
         x = x.view(x.size(0), -1)
+        
+        if self._unitnorm:
+            x = F.normalize(x, p=2)
         x = self.fc(x)
 
         return x

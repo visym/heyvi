@@ -95,7 +95,7 @@ class ActivityRecognition(object):
 class PIP_250k(pl.LightningModule, ActivityRecognition):
     """Activity recognition using people in public - 250k stabilized"""
     
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, bce=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=False):
 
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
@@ -108,7 +108,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-        self._bce = bce
+        self._unitnorm = unitnorm
         
         if deterministic:
             np.random.seed(42)
@@ -187,11 +187,6 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                     # Pick all labels normalized: https://papers.nips.cc/paper/2019/file/da647c549dde572c2c5edc4f5bef039c-Paper.pdf
                     loss += float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
 
-                if self._bce:
-                    # Binary cross entropy for per-class calibration
-                    # - FIXME: this training loss is suspect
-                    loss += float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), F.one_hot(torch.tensor([self._class_to_index[y]], device=y_hat.device), num_classes=len(C)).type(yh.type()), weight=C)
-
             n_valid += 1
             if len(lbllist) > 0:
                 y_validation.append( (yh, self._class_to_index[max(lbllist, key=lbllist.count)]) )  # most frequent label in clip
@@ -218,7 +213,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         return cls().load_from_checkpoint(checkpointpath)  # lightning
             
     def _load_trained(self, ckptfile):
-        self.net = heyvi.model.ResNets_3D_PyTorch.resnet.generate_model(50, n_classes=self.num_classes())
+        self.net = heyvi.model.ResNets_3D_PyTorch.resnet.generate_model(50, n_classes=self.num_classes(), unitnorm=self._unitnorm)
         t = torch.split(self.net.conv1.weight.data, dim=1, split_size_or_sections=1)
         self.net.conv1.weight.data = torch.cat( (*t, t[-1]), dim=1).contiguous()
         self.net.conv1.in_channels = 4  # inflate RGB -> RGBA
@@ -232,7 +227,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                                                 vipy.util.tocache('r3d50_KMS_200ep.pth'),  # set VIPY_CACHE env 
                                                 sha1='39ea626355308d8f75307cab047a8d75862c3261')
         
-        net = heyvi.model.ResNets_3D_PyTorch.resnet.generate_model(50, n_classes=1139)
+        net = heyvi.model.ResNets_3D_PyTorch.resnet.generate_model(50, n_classes=1139, unitnorm=self._unitnorm)
         pretrain = torch.load(pthfile, map_location='cpu')
         net.load_state_dict(pretrain['state_dict'])
 
@@ -301,7 +296,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
 class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, bce=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -311,9 +306,9 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-        self._bce = bce
         self._calibrated = False
         self._calibrated_constant = -1.5
+        self._unitnorm = unitnorm
         if deterministic:
             np.random.seed(42)
         
@@ -412,7 +407,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=True, calibrated_constant=2.84, calibrated=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=2.84, calibrated=False, unitnorm=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -422,10 +417,10 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = True
         self._mlbl = False
-        self._bce = bce
         self._calibrated_constant = calibrated_constant
         self._calibrated = calibrated
-        
+        self._unitnorm = unitnorm
+
         if deterministic:
             np.random.seed(42)
         
@@ -455,6 +450,9 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
 
     
     #---- <LIGHTNING>
+    def forward(self, x):
+        return self.net(x)  
+
     def validation_step(self, batch, batch_nb):
         s = self.training_step(batch, batch_nb, logging=False, valstep=True)
         self.log('val_loss', s['loss'], on_step=True, on_epoch=True, prog_bar=False, logger=True)
@@ -471,7 +469,7 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self.log('avg_val_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)  # for checkpointing
 
         # Calibration: will be saved as registered buffer in checkpoint for calibration
-        if self.trainer.is_global_zero:
+        if self._calibrated and self.trainer.is_global_zero:
             from netcal.scaling import LogisticCalibration, TemperatureScaling
             logits = torch.stack([x for output in outputs for x in output['logit']]).detach().cpu().numpy()
             ground_truth = torch.cat([x.flatten() for output in outputs for x in output['classindex']]).flatten().detach().cpu().numpy()
@@ -783,8 +781,8 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, bce=False, calibrated=False, modelfile=None, calibrated_constant=False):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=False, unitnorm=False):
         ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
-        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, bce=bce, calibrated_constant=calibrated_constant, calibrated=calibrated)                
+        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)                
 
 
