@@ -432,11 +432,11 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
 
         # Generated using vipy.dataset.Dataset.class_to_index()
         self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
-        self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()}
 
-        # Generated using vipy.dataset.Dataset.class_to_shortlabel()        
+        # Generated using vipy.dataset.Dataset.class_to_shortlabel()
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
-
+        self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
+        
         # Calibration state: trained at validation epoch end
         if self._calibrated:
             self.register_buffer('_calibration_multiclass', torch.zeros(1,1))
@@ -537,6 +537,7 @@ class ActivityTracker(PIP_370k):
         super().__init__(pretrained=False, modelfile=modelfile, mlbl=mlbl, mlfl=mlfl)
         self._stride = stride
         self._allowable_activities = {k:v for (k,v) in [(a,a) if not isinstance(a, tuple) else a for a in activities]} if activities is not None else {k:k for k in self.classlist()}
+        self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()+list(self._allowable_activities.values())+list(self._allowable_activities.keys())}  # HACK: fixme
         self._batchsize_per_gpu = batchsize
         self._gpus = gpus
 
@@ -549,6 +550,8 @@ class ActivityTracker(PIP_370k):
                 m.eval()
         torch.set_grad_enabled(False)
 
+        self._logit_pooling = None  # cache
+        
     def temporal_stride(self, s=None):
         if s is not None:
             self._stride = s
@@ -584,11 +587,23 @@ class ActivityTracker(PIP_370k):
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         return [sorted([(self.index_to_class(j), float(s[j]), float(t[j]), f_logistic(s[j], 1.0)*f_logistic(t[j], 0.0), float(sm[j])) for j in range(len(s)) if (lrt_threshold is None or t[j] >= lrt_threshold)], key=lambda x: x[3], reverse=True) for (s,t,sm) in zip(yh, lr, yh_softmax)]
 
+    def logit_pooling(self, x_logits, classmap):
+        if self._logit_pooling is None:
+            assert isinstance(classmap, dict)
+            index_to_class = {k:c for (k,c) in enumerate(set([k if v is None else v for (k,v) in classmap.items()]))}  # target class index
+            class_to_index = {v:k for (k,v) in index_to_class.items()}  # target class to index
+            class_to_group = [[self.class_to_index(c[0]) for c in v if c[0] in self.class_to_index()] for (k,v) in sorted(vipy.util.groupbyasdict([(k,k) if v is None else (k,v) for (k,v) in classmap.items()], lambda x: x[1]).items(), key=lambda x: class_to_index[x[0]])]  # target class to source index
+            self._logit_pooling = {'index_to_class': index_to_class, 'class_to_group': class_to_group}
+        (index_to_class, class_to_group) = (self._logit_pooling['index_to_class'], self._logit_pooling['class_to_group'])  # cached
+        yh = torch.tensor([max(r[j]) if len(r[j])>0 else (min(r)) for (i,r) in enumerate(x_logits) for j in class_to_group]).reshape(len(x_logits), len(index_to_class)).detach()
+        yh_softmax = F.softmax(yh, dim=1).detach().cpu()
+        return [[(index_to_class[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh.cpu(), yh_softmax)]
+        
     def softmax(self, x_logits):
         """Return a list of lists [(class_label, float(softmax), float(logit) ... ] for all classes and batches"""
-        yh = x_logits.detach().cpu().numpy()        
+        yh = x_logits.detach().cpu().numpy()
         yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
-        d = self.index_to_class()        
+        d = self.index_to_class()
         if not self._calibrated:
             return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
         else:
@@ -627,7 +642,7 @@ class ActivityTracker(PIP_370k):
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
         if self._calibrated_constant is not None:
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
-            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], self._calibrated_constant)) if a.id() in tofinalize else a)  # -1.5 -> 2.84
+            vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], self._calibrated_constant)) if a.id() in tofinalize else a)  
             
         # Complex activities: remove steal/abandon and replace with picks up / puts down
         vo.activityfilter(lambda a: a.category() not in ['person_steals_object', 'person_abandons_package'])
@@ -738,7 +753,7 @@ class ActivityTracker(PIP_370k):
             j = sum([v.actor().category() == 'person' for v in V])  # person mirrored, vehicle not mirrored
             (tm, t) = torch.split(T, (2*j, len(T)-2*j), dim=0)  # assumes sorted order, person first, only person/vehicle
             return torch.cat((torch.mean(tm.view(-1, 2, tm.shape[1]), dim=1), t), dim=0) if j>0 else T  # mean over mirror augmentation
-        
+
         try:
             with torch.no_grad():                                
                 vp = next(vi)  # peek in generator to create clip
@@ -758,12 +773,13 @@ class ActivityTracker(PIP_370k):
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
-                        dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
-                                for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
+                        dets = [vipy.activity.Activity(category=category, shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
+                                #for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
+                                for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
                                 for (category, sm, logit) in category_sm_logit
-                                if ((category in aa) and   # requested activities only
-                                    (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
-                                    sm>=minprob)]   # minimum probability for new activity detection
+                                if (#(category in aa) and   # requested activities only
+                                        (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
+                                        sm>=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
                         del logits, dets, videotracks  # torch garabage collection
 
@@ -781,8 +797,9 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=False, unitnorm=False):
-        ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
-        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)                
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-1.75, unitnorm=False):
+        ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)        
+        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)
+
 
 
