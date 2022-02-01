@@ -2339,6 +2339,12 @@ INDEX=[
 "func":1
 },
 {
+"ref":"heyvi.recognition.ActivityTracker.logit_pooling",
+"url":29,
+"doc":"",
+"func":1
+},
+{
 "ref":"heyvi.recognition.ActivityTracker.softmax",
 "url":29,
 "doc":"Return a list of lists [(class_label, float(softmax), float(logit)  . ] for all classes and batches",

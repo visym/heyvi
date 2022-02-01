@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L0-L238" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L0-L238" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import math
 from functools import partial
@@ -283,7 +283,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv1x1x1(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -301,7 +301,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv3x3x3(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -320,7 +320,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L221-L239" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L221-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def generate_model(model_depth, **kwargs):
     assert model_depth in [10, 18, 34, 50, 101, 152, 200]
@@ -351,7 +351,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_inplanes():
     return [64, 128, 256, 512]</code></pre>
@@ -393,7 +393,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BasicBlock(nn.Module):
     expansion = 1
@@ -464,7 +464,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -518,7 +518,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Bottleneck(nn.Module):
     expansion = 4
@@ -595,7 +595,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -653,7 +653,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L218" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ResNet(nn.Module):
 
@@ -806,7 +806,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L198-L218" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/7f43c17143fd927664335c650732491d5fbca431/heyvi/model/ResNets_3D_PyTorch/resnet.py#L198-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     x = self.conv1(x)
