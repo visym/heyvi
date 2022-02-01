@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L0-L233" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L0-L238" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import math
 from functools import partial
@@ -140,6 +140,7 @@ class ResNet(nn.Module):
                  no_max_pool=False,
                  shortcut_type=&#39;B&#39;,
                  widen_factor=1.0,
+                 unitnorm=False,
                  n_classes=400):
         super().__init__()
 
@@ -147,6 +148,7 @@ class ResNet(nn.Module):
 
         self.in_planes = block_inplanes[0]
         self.no_max_pool = no_max_pool
+        self._unitnorm = unitnorm  # embedding layer
 
         self.conv1 = nn.Conv3d(n_input_channels,
                                self.in_planes,
@@ -237,6 +239,9 @@ class ResNet(nn.Module):
         x = self.avgpool(x)
 
         x = x.view(x.size(0), -1)
+        
+        if self._unitnorm:
+            x = F.normalize(x, p=2)
         x = self.fc(x)
 
         return x
@@ -278,7 +283,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L22-L27" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv1x1x1(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -296,7 +301,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L13-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def conv3x3x3(in_planes, out_planes, stride=1):
     return nn.Conv3d(in_planes,
@@ -315,7 +320,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L216-L234" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L221-L239" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def generate_model(model_depth, **kwargs):
     assert model_depth in [10, 18, 34, 50, 101, 152, 200]
@@ -346,7 +351,7 @@ def generate_model(model_depth, **kwargs):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L9-L10" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def get_inplanes():
     return [64, 128, 256, 512]</code></pre>
@@ -388,7 +393,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L30-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BasicBlock(nn.Module):
     expansion = 1
@@ -459,7 +464,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L44-L60" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -513,7 +518,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L63-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Bottleneck(nn.Module):
     expansion = 4
@@ -590,7 +595,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L79-L99" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     residual = x
@@ -619,7 +624,7 @@ registered hooks while the latter silently ignores them.</p>
 </dd>
 <dt id="heyvi.model.ResNets_3D_PyTorch.resnet.ResNet"><code class="flex name class">
 <span>class <span class="ident">ResNet</span></span>
-<span>(</span><span>block, layers, block_inplanes, n_input_channels=3, conv1_t_size=7, conv1_t_stride=1, no_max_pool=False, shortcut_type='B', widen_factor=1.0, n_classes=400)</span>
+<span>(</span><span>block, layers, block_inplanes, n_input_channels=3, conv1_t_size=7, conv1_t_stride=1, no_max_pool=False, shortcut_type='B', widen_factor=1.0, unitnorm=False, n_classes=400)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -648,7 +653,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L102-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ResNet(nn.Module):
 
@@ -662,6 +667,7 @@ evaluation mode.
                  no_max_pool=False,
                  shortcut_type=&#39;B&#39;,
                  widen_factor=1.0,
+                 unitnorm=False,
                  n_classes=400):
         super().__init__()
 
@@ -669,6 +675,7 @@ evaluation mode.
 
         self.in_planes = block_inplanes[0]
         self.no_max_pool = no_max_pool
+        self._unitnorm = unitnorm  # embedding layer
 
         self.conv1 = nn.Conv3d(n_input_channels,
                                self.in_planes,
@@ -759,6 +766,9 @@ evaluation mode.
         x = self.avgpool(x)
 
         x = x.view(x.size(0), -1)
+        
+        if self._unitnorm:
+            x = F.normalize(x, p=2)
         x = self.fc(x)
 
         return x</code></pre>
@@ -796,7 +806,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/cbbf2f9eda04d994aefd755bc80f31c0d8c14f12/heyvi/model/ResNets_3D_PyTorch/resnet.py#L196-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/608da625dbc5f5dac9d02dc415d746ec98680fd1/heyvi/model/ResNets_3D_PyTorch/resnet.py#L198-L218" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     x = self.conv1(x)
@@ -813,6 +823,9 @@ registered hooks while the latter silently ignores them.</p>
     x = self.avgpool(x)
 
     x = x.view(x.size(0), -1)
+    
+    if self._unitnorm:
+        x = F.normalize(x, p=2)
     x = self.fc(x)
 
     return x</code></pre>
