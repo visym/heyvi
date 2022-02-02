@@ -95,7 +95,7 @@ class ActivityRecognition(object):
 class PIP_250k(pl.LightningModule, ActivityRecognition):
     """Activity recognition using people in public - 250k stabilized"""
     
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=True):
 
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
@@ -109,7 +109,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._mlfl = mlfl
         self._mlbl = mlbl
         self._unitnorm = unitnorm
-        
+
         if deterministic:
             np.random.seed(42)
 
@@ -296,7 +296,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
 class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=True):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -307,8 +307,9 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._mlfl = mlfl
         self._mlbl = mlbl
         self._calibrated = False
-        self._calibrated_constant = -1.5
+        self._calibrated_constant = -0.29
         self._unitnorm = unitnorm
+
         if deterministic:
             np.random.seed(42)
         
@@ -407,7 +408,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=2.84, calibrated=False, unitnorm=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-0.29, calibrated=False, unitnorm=True):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -773,11 +774,11 @@ class ActivityTracker(PIP_370k):
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
-                        dets = [vipy.activity.Activity(category=category, shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
-                                #for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
-                                for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
+                        dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
+                                for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
+                                #for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
                                 for (category, sm, logit) in category_sm_logit
-                                if (#(category in aa) and   # requested activities only
+                                if ((category in aa) and   # requested activities only
                                         (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
                                         sm>=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
@@ -797,9 +798,9 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-1.75, unitnorm=False):
-        ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)        
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-0.29, unitnorm=True):
+        ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
         CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)
-
+        # FIXME: there is an issue with multiple inheritance and multi-gpu with default parameters here 
 
 

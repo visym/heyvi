@@ -213,8 +213,8 @@ class ResNet(nn.Module):
         
         if self._unitnorm:
             x = F.normalize(x, p=2)
-        x = self.fc(x)
 
+        x = self.fc(x)
         return x
 
 
