@@ -417,7 +417,9 @@ class MultiscaleVideoTracker(MultiscaleObjectDetector):
 
     def track(self, vi, verbose=False):
         """Batch tracking"""
-        for v in self.stream(vi):
+        assert isinstance(vi, vipy.video.Video), "Input must be vipy.video.Video object"
+        vs = vipy.video.Scene.cast(vi.clone())  # upcast to Scene for tracks
+        for v in self.stream(vs):
             if verbose:
                 print(v)
         return v
@@ -479,6 +481,8 @@ class WeakAnnotationTracker(MultiscaleVideoTracker):
         return super()._track(vi.clone().cleartracks(), stride=stride, continuous=continuous, buffered=buffered, rescore=f_rescorer)
 
     def track(self, vi, verbose=False):
+        assert isinstance(vi, vipy.video.Scene), "Input must be vipy.video.Scene object containing weak annotation object tracks"
+        
         self._objects = list(set([t.category().lower() for t in vi.tracklist()]).intersection(set(self.classlist())))  # only detect weakly annotated objects that are known (does not handle synonyms)
         vic = vi.downloadif().clone().framerate(self._framerate)  # tracker cloned input (lower framerate)
         vt = super().track(vic.clone(), verbose=verbose)  # tracker output (will call self._track)
@@ -525,7 +529,8 @@ class WeakAnnotationFaceTracker(FaceTracker):
         return super().__call__(vi.clone().clear(), minconf=self._minconf, miniou=self._miniou, maxhistory=self._maxhistory, smoothing=None, trackconf=self._trackconf, rescore=f_rescorer, gate=self._gate)
 
     def track(self, vi, verbose=False):        
-        assert isinstance(vi, vipy.video.Scene)
+        assert isinstance(vi, vipy.video.Scene), "Input must be vipy.video.Scene object containing weak annotation head or person tracks"
+        
         if not any([t.category().lower() in ['face','head', 'person'] for t in vi.tracklist()]):
             warnings.warn('No face proposals')
             return vi.clone()
