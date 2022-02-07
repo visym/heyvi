@@ -4,16 +4,6 @@ from argparse import ArgumentParser
 import heyvi.cap
 
 
-T = heyvi.cap.CAP()
-
-
-def track(vi, minconf=0.15, outfile=None):
-    assert isinstance(vi, vipy.video.Scene)
-    v = T(vi.clone().clear().framerate(5), minconf=minconf)
-    if outfile:
-        v = T.annotate(v, outfile=outfile, minconf=minconf)
-    return v
-
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument("-i","--infile", help="Input video file (.mp4) to track", required=True)
@@ -23,7 +13,12 @@ if __name__ == '__main__':
     parser.add_argument("-c","--confidence", help="Minimum activity confidence for visualization", default=0.15)
     args = parser.parse_args()
 
-    v = track(vipy.video.Scene(filename=args.infile).framerate(args.framerate), minconf=float(args.confidence), outfile=args.outfile)    
+    T = heyvi.cap.CAP()
+    v = T.detect(vipy.video.Scene(filename=args.infile).framerate(args.framerate), minconf=float(args.confidence))
+
+    if args.outfile:
+        T.annotate(v, outfile=outfile, minconf=minconf)
+        
     if args.jsonfile:
         vipy.util.save(v, args.jsonfile)
 

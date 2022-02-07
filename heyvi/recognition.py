@@ -51,7 +51,7 @@ class ActivityRecognition(object):
         return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order
 
     def num_classes(self):
-        return len(self.classlist())
+        return len(set(self.class_to_index().values()))
 
     def fromindex(self, k):
         index_to_class = self.index_to_class()
@@ -160,12 +160,14 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         y_hat_softmax = F.softmax(y_hat, dim=1)
 
         (loss, n_valid, y_validation) = (0, 0, [])
-        C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        #C = torch.tensor([self._index_to_training_weight[v] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        C = torch.tensor([v for (k,v) in sorted(self._index_to_training_weight.items(), key=lambda x: x[0])], device=y_hat.device)  # inverse class frequency        
         for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
             labels = json.loads(labelstr)
             if labels is None:
                 continue  # skip me
             lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
+            lbllist = [l for l in lbllist if l in self._class_to_index]  # only allowable classes
             lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
             lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
             for (y,w) in lbl_weight.items():
@@ -314,11 +316,14 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
             np.random.seed(42)
         
         # Generated using vipy.dataset.Dataset(...).multilabel_inverse_frequency_weight()
-        self._class_to_weight = {'car_drops_off_person': 0.7858124882763793, 'car_moves': 0.18439798528529147, 'car_picks_up_person': 0.7380666753394193, 'car_reverses': 0.5753369570213479, 'car_starts': 0.47486292483745757, 'car_stops': 0.44244800737774037, 'car_turns_left': 0.7697107319736983, 'car_turns_right': 0.5412936796835607, 'hand_interacts_with_person': 0.2794031245117859, 'person_abandons_package': 1.0789960714517162, 'person_carries_heavy_object': 0.5032333530901552, 'person_closes_car_door': 0.46460114438995603, 'person_closes_car_trunk': 0.6824201392305784, 'person_closes_facility_door': 0.38990434394080076, 'person_embraces_person': 0.6457437695527715, 'person_enters_car': 0.6934926810021877, 'person_enters_scene_through_structure': 0.2586965095740063, 'person_exits_car': 0.6766386632434479, 'person_exits_scene_through_structure': 0.33054895987676847, 'person_interacts_with_laptop': 0.6720176496986436, 'person_loads_car': 0.6880555743488312, 'person_opens_car_door': 0.4069868136393968, 'person_opens_car_trunk': 0.6911966903970317, 'person_opens_facility_door': 0.3018924474724252, 'person_picks_up_object': 0.4298381074082487, 'person_purchases_from_cashier': 5.479834409621331, 'person_purchases_from_machine': 5.31528236654537, 'person_puts_down_object': 0.2804690906037155, 'person_reads_document': 0.5476186269530937, 'person_rides_bicycle': 1.6090962879286763, 'person_sits_down': 0.4750148103149501, 'person_stands_up': 0.5022364750834624, 'person_steals_object': 0.910991409921711, 'person_talks_on_phone': 0.15771902851484076, 'person_talks_to_person': 0.21362675034201736, 'person_texts_on_phone': 0.3328378404741194, 'person_transfers_object_to_car': 2.964890512157848, 'person_transfers_object_to_person': 0.6481292773603928, 'person_unloads_car': 0.515379337544623, 'person_walks': 6.341278284010202}
-        
+        self._class_to_training_weight = {'car_drops_off_person': 0.7858124882763793, 'car_moves': 0.18439798528529147, 'car_picks_up_person': 0.7380666753394193, 'car_reverses': 0.5753369570213479, 'car_starts': 0.47486292483745757, 'car_stops': 0.44244800737774037, 'car_turns_left': 0.7697107319736983, 'car_turns_right': 0.5412936796835607, 'hand_interacts_with_person': 0.2794031245117859, 'person_abandons_package': 1.0789960714517162, 'person_carries_heavy_object': 0.5032333530901552, 'person_closes_car_door': 0.46460114438995603, 'person_closes_car_trunk': 0.6824201392305784, 'person_closes_facility_door': 0.38990434394080076, 'person_embraces_person': 0.6457437695527715, 'person_enters_car': 0.6934926810021877, 'person_enters_scene_through_structure': 0.2586965095740063, 'person_exits_car': 0.6766386632434479, 'person_exits_scene_through_structure': 0.33054895987676847, 'person_interacts_with_laptop': 0.6720176496986436, 'person_loads_car': 0.6880555743488312, 'person_opens_car_door': 0.4069868136393968, 'person_opens_car_trunk': 0.6911966903970317, 'person_opens_facility_door': 0.3018924474724252, 'person_picks_up_object': 0.4298381074082487, 'person_purchases_from_cashier': 5.479834409621331, 'person_purchases_from_machine': 5.31528236654537, 'person_puts_down_object': 0.2804690906037155, 'person_reads_document': 0.5476186269530937, 'person_rides_bicycle': 1.6090962879286763, 'person_sits_down': 0.4750148103149501, 'person_stands_up': 0.5022364750834624, 'person_steals_object': 0.910991409921711, 'person_talks_on_phone': 0.15771902851484076, 'person_talks_to_person': 0.21362675034201736, 'person_texts_on_phone': 0.3328378404741194, 'person_transfers_object_to_car': 2.964890512157848, 'person_transfers_object_to_person': 0.6481292773603928, 'person_unloads_car': 0.515379337544623, 'person_walks': 6.341278284010202}
+        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+
         # Generated using vipy.dataset.Dataset(...).class_to_index()
         self._class_to_index = {'car_drops_off_person': 0, 'car_moves': 1, 'car_picks_up_person': 2, 'car_reverses': 3, 'car_starts': 4, 'car_stops': 5, 'car_turns_left': 6, 'car_turns_right': 7, 'hand_interacts_with_person': 8, 'person_abandons_package': 9, 'person_carries_heavy_object': 10, 'person_closes_car_door': 11, 'person_closes_car_trunk': 12, 'person_closes_facility_door': 13, 'person_embraces_person': 14, 'person_enters_car': 15, 'person_enters_scene_through_structure': 16, 'person_exits_car': 17, 'person_exits_scene_through_structure': 18, 'person_interacts_with_laptop': 19, 'person_loads_car': 20, 'person_opens_car_door': 21, 'person_opens_car_trunk': 22, 'person_opens_facility_door': 23, 'person_picks_up_object': 24, 'person_purchases_from_cashier': 25, 'person_purchases_from_machine': 26, 'person_puts_down_object': 27, 'person_reads_document': 28, 'person_rides_bicycle': 29, 'person_sits_down': 30, 'person_stands_up': 31, 'person_steals_object': 32, 'person_talks_on_phone': 33, 'person_talks_to_person': 34, 'person_texts_on_phone': 35, 'person_transfers_object_to_car': 36, 'person_transfers_object_to_person': 37, 'person_unloads_car': 38, 'person_walks': 39}
         
+        self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+
         self._verb_to_noun = {k:set(['car','vehicle','motorcycle','bus','truck']) if (k.startswith('car') or k.startswith('motorcycle') or k.startswith('vehicle')) else set(['person']) for k in self.classlist()}        
         self._class_to_shortlabel = heyvi.label.pip_to_shortlabel
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
@@ -424,20 +429,46 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
 
         if deterministic:
             np.random.seed(42)
-        
-        # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-        # - WARNING: under-represented classes are truncated at a maximum weight of one
-        # - python 3.7 can use importlib.resources
-        self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_training_weight.csv'))}
-        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
-        # Generated using vipy.dataset.Dataset.class_to_index()
-        self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
+        version = 2
+        if version == 1:
+            print('[heyvi.recognition.CAP]: version == 1')  # cap_l2norm_e23s96095.ckpt and earlier
 
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            # - python 3.7 can use importlib.resources
+            self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_training_weight.csv'))}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
+            self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+            
+            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
+            self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
+            self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
+
+        elif version == 2:
+            print('[heyvi.recognition.CAP]: version==2')
+
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_index_to_training_weight.csv'))}
+
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_class_to_index.csv'))}
+            self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_index_to_class.csv'))}
+
+            # Derived
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            
         # Generated using vipy.dataset.Dataset.class_to_shortlabel()
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
-        
+
+
         # Calibration state: trained at validation epoch end
         if self._calibrated:
             self.register_buffer('_calibration_multiclass', torch.zeros(1,1))
@@ -611,7 +642,7 @@ class ActivityTracker(PIP_370k):
             yh_softmax = self.calibration(x_logits)
             return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
 
-    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None):
         """In place filtering of video to finalize"""
         assert isinstance(vo, vipy.video.Scene)
 
@@ -621,7 +652,7 @@ class ActivityTracker(PIP_370k):
         # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
         # - will throw exception that 'vo referenced before assignment' if one loop did not succceed
         if trackconf is not None:
-            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)>=vo.framerate() and (t.confidence() >= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)>=(mintracklen if mintracklen is not None else vo.framerate()) and (t.confidence() >= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
         
         # Activity probability:  noun_probability*verb probability
         nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
@@ -641,7 +672,7 @@ class ActivityTracker(PIP_370k):
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) > (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class "person stands", otherwise every standing person is using a phone
-        if self._calibrated_constant is not None:
+        if self._calibrated_constant is not None:            
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
             vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes['logit'], self._calibrated_constant)) if a.id() in tofinalize else a)  
             
@@ -742,8 +773,9 @@ class ActivityTracker(PIP_370k):
             vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() >= activityconf)
     
         return vo
-            
-    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True):
+
+        
+    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True, mintracklen=None):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -> tensor CxNxHxW
@@ -769,23 +801,22 @@ class ActivityTracker(PIP_370k):
                                    (avgdets if ((k/sw.duration())/vp.framerate())>0.67 else int(avgdets//2)))   # real-time throttle schedule
                         videotracks = videotracks[-numdets:] if (numdets is not None and len(videotracks)>numdets) else videotracks   # select only the most confident for detection                
                     videotracks.sort(key=lambda v: v.actor().category())  # in-place, for grouping mirrored encoding: person<vehicle
-                
-                    if len(videotracks)>0 and (k+dt > n):
+
+                    if len(videotracks)>0 and (k+dt > n): 
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
                         dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={'pip':category, 'logit':float(logit)})
                                 for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
-                                #for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
                                 for (category, sm, logit) in category_sm_logit
                                 if ((category in aa) and   # requested activities only
-                                        (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
-                                        sm>=minprob)]   # minimum probability for new activity detection
+                                    (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
+                                    sm>=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
                         del logits, dets, videotracks  # torch garabage collection
 
                     if not isinstance(finalized, bool) and k > 0 and k%finalized == 0:
-                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5)  
+                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5, mintracklen=mintracklen)  
                         
                     yield vo
 
@@ -794,7 +825,7 @@ class ActivityTracker(PIP_370k):
 
         finally:
             if not (finalized is False):
-                self.finalize(vo, trackconf=trackconf) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k)
+                self.finalize(vo, trackconf=trackconf, mintracklen=mintracklen) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k, mintracklen=mintracklen)
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
