@@ -32,7 +32,8 @@ URLS=[
 "heyvi/sensor.html",
 "heyvi/system.html",
 "heyvi/util.html",
-"heyvi/version.html"
+"heyvi/version.html",
+"heyvi/cap.html"
 ];
 INDEX=[
 {
@@ -2601,6 +2602,34 @@ INDEX=[
 "ref":"heyvi.version.at_least_major_version",
 "url":33,
 "doc":"is the major version (e.g. X, for version X.Y.Z) greater than or equal to the major version integer supplied?",
+"func":1
+},
+{
+"ref":"heyvi.cap",
+"url":34,
+"doc":""
+},
+{
+"ref":"heyvi.cap.CAP",
+"url":34,
+"doc":"heyvi.system.CAP class"
+},
+{
+"ref":"heyvi.cap.CAP.annotate",
+"url":34,
+"doc":"",
+"func":1
+},
+{
+"ref":"heyvi.cap.CAP.detect",
+"url":34,
+"doc":"",
+"func":1
+},
+{
+"ref":"heyvi.cap.CAP.classify",
+"url":34,
+"doc":"",
 "func":1
 }
 ]

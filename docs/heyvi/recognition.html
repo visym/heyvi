@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L0-L805" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L0-L836" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import os
 import sys
@@ -80,7 +80,7 @@ class ActivityRecognition(object):
         return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order
 
     def num_classes(self):
-        return len(self.classlist())
+        return len(set(self.class_to_index().values()))
 
     def fromindex(self, k):
         index_to_class = self.index_to_class()
@@ -189,12 +189,14 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         y_hat_softmax = F.softmax(y_hat, dim=1)
 
         (loss, n_valid, y_validation) = (0, 0, [])
-        C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        #C = torch.tensor([self._index_to_training_weight[v] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        C = torch.tensor([v for (k,v) in sorted(self._index_to_training_weight.items(), key=lambda x: x[0])], device=y_hat.device)  # inverse class frequency        
         for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
             labels = json.loads(labelstr)
             if labels is None:
                 continue  # skip me
             lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
+            lbllist = [l for l in lbllist if l in self._class_to_index]  # only allowable classes
             lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
             lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
             for (y,w) in lbl_weight.items():
@@ -343,11 +345,14 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
             np.random.seed(42)
         
         # Generated using vipy.dataset.Dataset(...).multilabel_inverse_frequency_weight()
-        self._class_to_weight = {&#39;car_drops_off_person&#39;: 0.7858124882763793, &#39;car_moves&#39;: 0.18439798528529147, &#39;car_picks_up_person&#39;: 0.7380666753394193, &#39;car_reverses&#39;: 0.5753369570213479, &#39;car_starts&#39;: 0.47486292483745757, &#39;car_stops&#39;: 0.44244800737774037, &#39;car_turns_left&#39;: 0.7697107319736983, &#39;car_turns_right&#39;: 0.5412936796835607, &#39;hand_interacts_with_person&#39;: 0.2794031245117859, &#39;person_abandons_package&#39;: 1.0789960714517162, &#39;person_carries_heavy_object&#39;: 0.5032333530901552, &#39;person_closes_car_door&#39;: 0.46460114438995603, &#39;person_closes_car_trunk&#39;: 0.6824201392305784, &#39;person_closes_facility_door&#39;: 0.38990434394080076, &#39;person_embraces_person&#39;: 0.6457437695527715, &#39;person_enters_car&#39;: 0.6934926810021877, &#39;person_enters_scene_through_structure&#39;: 0.2586965095740063, &#39;person_exits_car&#39;: 0.6766386632434479, &#39;person_exits_scene_through_structure&#39;: 0.33054895987676847, &#39;person_interacts_with_laptop&#39;: 0.6720176496986436, &#39;person_loads_car&#39;: 0.6880555743488312, &#39;person_opens_car_door&#39;: 0.4069868136393968, &#39;person_opens_car_trunk&#39;: 0.6911966903970317, &#39;person_opens_facility_door&#39;: 0.3018924474724252, &#39;person_picks_up_object&#39;: 0.4298381074082487, &#39;person_purchases_from_cashier&#39;: 5.479834409621331, &#39;person_purchases_from_machine&#39;: 5.31528236654537, &#39;person_puts_down_object&#39;: 0.2804690906037155, &#39;person_reads_document&#39;: 0.5476186269530937, &#39;person_rides_bicycle&#39;: 1.6090962879286763, &#39;person_sits_down&#39;: 0.4750148103149501, &#39;person_stands_up&#39;: 0.5022364750834624, &#39;person_steals_object&#39;: 0.910991409921711, &#39;person_talks_on_phone&#39;: 0.15771902851484076, &#39;person_talks_to_person&#39;: 0.21362675034201736, &#39;person_texts_on_phone&#39;: 0.3328378404741194, &#39;person_transfers_object_to_car&#39;: 2.964890512157848, &#39;person_transfers_object_to_person&#39;: 0.6481292773603928, &#39;person_unloads_car&#39;: 0.515379337544623, &#39;person_walks&#39;: 6.341278284010202}
-        
+        self._class_to_training_weight = {&#39;car_drops_off_person&#39;: 0.7858124882763793, &#39;car_moves&#39;: 0.18439798528529147, &#39;car_picks_up_person&#39;: 0.7380666753394193, &#39;car_reverses&#39;: 0.5753369570213479, &#39;car_starts&#39;: 0.47486292483745757, &#39;car_stops&#39;: 0.44244800737774037, &#39;car_turns_left&#39;: 0.7697107319736983, &#39;car_turns_right&#39;: 0.5412936796835607, &#39;hand_interacts_with_person&#39;: 0.2794031245117859, &#39;person_abandons_package&#39;: 1.0789960714517162, &#39;person_carries_heavy_object&#39;: 0.5032333530901552, &#39;person_closes_car_door&#39;: 0.46460114438995603, &#39;person_closes_car_trunk&#39;: 0.6824201392305784, &#39;person_closes_facility_door&#39;: 0.38990434394080076, &#39;person_embraces_person&#39;: 0.6457437695527715, &#39;person_enters_car&#39;: 0.6934926810021877, &#39;person_enters_scene_through_structure&#39;: 0.2586965095740063, &#39;person_exits_car&#39;: 0.6766386632434479, &#39;person_exits_scene_through_structure&#39;: 0.33054895987676847, &#39;person_interacts_with_laptop&#39;: 0.6720176496986436, &#39;person_loads_car&#39;: 0.6880555743488312, &#39;person_opens_car_door&#39;: 0.4069868136393968, &#39;person_opens_car_trunk&#39;: 0.6911966903970317, &#39;person_opens_facility_door&#39;: 0.3018924474724252, &#39;person_picks_up_object&#39;: 0.4298381074082487, &#39;person_purchases_from_cashier&#39;: 5.479834409621331, &#39;person_purchases_from_machine&#39;: 5.31528236654537, &#39;person_puts_down_object&#39;: 0.2804690906037155, &#39;person_reads_document&#39;: 0.5476186269530937, &#39;person_rides_bicycle&#39;: 1.6090962879286763, &#39;person_sits_down&#39;: 0.4750148103149501, &#39;person_stands_up&#39;: 0.5022364750834624, &#39;person_steals_object&#39;: 0.910991409921711, &#39;person_talks_on_phone&#39;: 0.15771902851484076, &#39;person_talks_to_person&#39;: 0.21362675034201736, &#39;person_texts_on_phone&#39;: 0.3328378404741194, &#39;person_transfers_object_to_car&#39;: 2.964890512157848, &#39;person_transfers_object_to_person&#39;: 0.6481292773603928, &#39;person_unloads_car&#39;: 0.515379337544623, &#39;person_walks&#39;: 6.341278284010202}
+        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+
         # Generated using vipy.dataset.Dataset(...).class_to_index()
         self._class_to_index = {&#39;car_drops_off_person&#39;: 0, &#39;car_moves&#39;: 1, &#39;car_picks_up_person&#39;: 2, &#39;car_reverses&#39;: 3, &#39;car_starts&#39;: 4, &#39;car_stops&#39;: 5, &#39;car_turns_left&#39;: 6, &#39;car_turns_right&#39;: 7, &#39;hand_interacts_with_person&#39;: 8, &#39;person_abandons_package&#39;: 9, &#39;person_carries_heavy_object&#39;: 10, &#39;person_closes_car_door&#39;: 11, &#39;person_closes_car_trunk&#39;: 12, &#39;person_closes_facility_door&#39;: 13, &#39;person_embraces_person&#39;: 14, &#39;person_enters_car&#39;: 15, &#39;person_enters_scene_through_structure&#39;: 16, &#39;person_exits_car&#39;: 17, &#39;person_exits_scene_through_structure&#39;: 18, &#39;person_interacts_with_laptop&#39;: 19, &#39;person_loads_car&#39;: 20, &#39;person_opens_car_door&#39;: 21, &#39;person_opens_car_trunk&#39;: 22, &#39;person_opens_facility_door&#39;: 23, &#39;person_picks_up_object&#39;: 24, &#39;person_purchases_from_cashier&#39;: 25, &#39;person_purchases_from_machine&#39;: 26, &#39;person_puts_down_object&#39;: 27, &#39;person_reads_document&#39;: 28, &#39;person_rides_bicycle&#39;: 29, &#39;person_sits_down&#39;: 30, &#39;person_stands_up&#39;: 31, &#39;person_steals_object&#39;: 32, &#39;person_talks_on_phone&#39;: 33, &#39;person_talks_to_person&#39;: 34, &#39;person_texts_on_phone&#39;: 35, &#39;person_transfers_object_to_car&#39;: 36, &#39;person_transfers_object_to_person&#39;: 37, &#39;person_unloads_car&#39;: 38, &#39;person_walks&#39;: 39}
         
+        self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+
         self._verb_to_noun = {k:set([&#39;car&#39;,&#39;vehicle&#39;,&#39;motorcycle&#39;,&#39;bus&#39;,&#39;truck&#39;]) if (k.startswith(&#39;car&#39;) or k.startswith(&#39;motorcycle&#39;) or k.startswith(&#39;vehicle&#39;)) else set([&#39;person&#39;]) for k in self.classlist()}        
         self._class_to_shortlabel = heyvi.label.pip_to_shortlabel
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
@@ -453,20 +458,46 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
 
         if deterministic:
             np.random.seed(42)
-        
-        # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-        # - WARNING: under-represented classes are truncated at a maximum weight of one
-        # - python 3.7 can use importlib.resources
-        self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_training_weight.csv&#39;))}
-        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
-        # Generated using vipy.dataset.Dataset.class_to_index()
-        self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class.csv&#39;))}
+        version = 2
+        if version == 1:
+            print(&#39;[heyvi.recognition.CAP]: version == 1&#39;)  # cap_l2norm_e23s96095.ckpt and earlier
 
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            # - python 3.7 can use importlib.resources
+            self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_training_weight.csv&#39;))}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class.csv&#39;))}
+            self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+            
+            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
+            self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_shortlabel.csv&#39;)))
+            self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
+
+        elif version == 2:
+            print(&#39;[heyvi.recognition.CAP]: version==2&#39;)
+
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_index_to_training_weight.csv&#39;))}
+
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_class_to_index.csv&#39;))}
+            self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_index_to_class.csv&#39;))}
+
+            # Derived
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            
         # Generated using vipy.dataset.Dataset.class_to_shortlabel()
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_shortlabel.csv&#39;)))
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
-        
+
+
         # Calibration state: trained at validation epoch end
         if self._calibrated:
             self.register_buffer(&#39;_calibration_multiclass&#39;, torch.zeros(1,1))
@@ -640,7 +671,7 @@ class ActivityTracker(PIP_370k):
             yh_softmax = self.calibration(x_logits)
             return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
 
-    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None):
         &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
         assert isinstance(vo, vipy.video.Scene)
 
@@ -650,7 +681,7 @@ class ActivityTracker(PIP_370k):
         # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
         # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
         if trackconf is not None:
-            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=(mintracklen if mintracklen is not None else vo.framerate()) and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
         
         # Activity probability:  noun_probability*verb probability
         nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
@@ -670,7 +701,7 @@ class ActivityTracker(PIP_370k):
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
-        if self._calibrated_constant is not None:
+        if self._calibrated_constant is not None:            
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
             vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], self._calibrated_constant)) if a.id() in tofinalize else a)  
             
@@ -771,8 +802,9 @@ class ActivityTracker(PIP_370k):
             vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() &gt;= activityconf)
     
         return vo
-            
-    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True):
+
+        
+    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True, mintracklen=None):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -&gt; tensor CxNxHxW
@@ -798,23 +830,22 @@ class ActivityTracker(PIP_370k):
                                    (avgdets if ((k/sw.duration())/vp.framerate())&gt;0.67 else int(avgdets//2)))   # real-time throttle schedule
                         videotracks = videotracks[-numdets:] if (numdets is not None and len(videotracks)&gt;numdets) else videotracks   # select only the most confident for detection                
                     videotracks.sort(key=lambda v: v.actor().category())  # in-place, for grouping mirrored encoding: person&lt;vehicle
-                
-                    if len(videotracks)&gt;0 and (k+dt &gt; n):
+
+                    if len(videotracks)&gt;0 and (k+dt &gt; n): 
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
                         dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={&#39;pip&#39;:category, &#39;logit&#39;:float(logit)})
                                 for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
-                                #for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
                                 for (category, sm, logit) in category_sm_logit
                                 if ((category in aa) and   # requested activities only
-                                        (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
-                                        sm&gt;=minprob)]   # minimum probability for new activity detection
+                                    (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
+                                    sm&gt;=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
                         del logits, dets, videotracks  # torch garabage collection
 
                     if not isinstance(finalized, bool) and k &gt; 0 and k%finalized == 0:
-                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5)  
+                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5, mintracklen=mintracklen)  
                         
                     yield vo
 
@@ -823,7 +854,7 @@ class ActivityTracker(PIP_370k):
 
         finally:
             if not (finalized is False):
-                self.finalize(vo, trackconf=trackconf) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k)
+                self.finalize(vo, trackconf=trackconf, mintracklen=mintracklen) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k, mintracklen=mintracklen)
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
@@ -851,7 +882,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L35-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L35-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityRecognition(object):
     def __init__(self, pretrained=True):
@@ -872,7 +903,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
         return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order
 
     def num_classes(self):
-        return len(self.classlist())
+        return len(set(self.class_to_index().values()))
 
     def fromindex(self, k):
         index_to_class = self.index_to_class()
@@ -927,7 +958,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L67-L69" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L67-L69" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def activity(self, video, threshold=None):
     (c,s) = zip(*self.label_confidence(video=video, threshold=None))
@@ -942,7 +973,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L87-L91" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L87-L91" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def binary_vector(self, categories):
     y = np.zeros(len(self.classlist())).astype(np.float32)
@@ -959,7 +990,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L42-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L42-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def class_to_index(self, c=None):
     return self._class_to_index if c is None else self._class_to_index[c]</code></pre>
@@ -973,7 +1004,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L50-L51" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L50-L51" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def classlist(self):
     return [k for (k,v) in sorted(list(self.class_to_index().items()), key=lambda x: x[0])]  # sorted in index order</code></pre>
@@ -987,7 +1018,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L56-L59" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L56-L59" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fromindex(self, k):
     index_to_class = self.index_to_class()
@@ -1003,7 +1034,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L45-L48" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L45-L48" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def index_to_class(self, index=None):
     if self._index_to_class is None:
@@ -1019,7 +1050,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L61-L65" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L61-L65" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def label_confidence(self, video=None, tensor=None, threshold=None):
     raise
@@ -1036,10 +1067,10 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L53-L54" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L53-L54" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def num_classes(self):
-    return len(self.classlist())</code></pre>
+    return len(set(self.class_to_index().values()))</code></pre>
 </details>
 </dd>
 <dt id="heyvi.recognition.ActivityRecognition.temporal_support"><code class="name flex">
@@ -1050,7 +1081,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L81-L82" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L81-L82" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_support(self):
     return self._num_frames</code></pre>
@@ -1064,7 +1095,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L71-L73" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L71-L73" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def top1(self, video=None, tensor=None, threshold=None):
     raise
@@ -1079,7 +1110,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L75-L79" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L75-L79" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, k, video=None, tensor=None, threshold=None):
     raise
@@ -1096,7 +1127,7 @@ class ActivityTrackerCap(ActivityTracker, CAP):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L84-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L84-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, training=False):
     raise</code></pre>
@@ -1137,7 +1168,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L517-L797" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L548-L828" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityTracker(PIP_370k):
     &#34;&#34;&#34;Video Activity detection.
@@ -1236,7 +1267,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
             yh_softmax = self.calibration(x_logits)
             return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
 
-    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+    def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None):
         &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
         assert isinstance(vo, vipy.video.Scene)
 
@@ -1246,7 +1277,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
         # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
         # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
         if trackconf is not None:
-            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+            vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=(mintracklen if mintracklen is not None else vo.framerate()) and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
         
         # Activity probability:  noun_probability*verb probability
         nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
@@ -1266,7 +1297,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
                                                                                              (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
         
         # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
-        if self._calibrated_constant is not None:
+        if self._calibrated_constant is not None:            
             f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
             vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], self._calibrated_constant)) if a.id() in tofinalize else a)  
             
@@ -1367,8 +1398,9 @@ This is useful for streaming activity detection on unbounded inputs. </p>
             vo.activityfilter(lambda a: a.id() not in tofinalize or a.confidence() &gt;= activityconf)
     
         return vo
-            
-    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True):
+
+        
+    def __call__(self, vi, activityiou=0.1, mirror=False, minprob=0.04, trackconf=0.2, maxdets=105, avgdets=70, throttle=True, buffered=True, finalized=True, mintracklen=None):
         (n,m,dt) = (self.temporal_support(), self.temporal_stride(), 1)  
         aa = self._allowable_activities  # dictionary mapping of allowable classified activities to output names        
         f_encode = self.totensor(training=False, validation=False, show=False, doflip=False)  # video -&gt; tensor CxNxHxW
@@ -1394,23 +1426,22 @@ This is useful for streaming activity detection on unbounded inputs. </p>
                                    (avgdets if ((k/sw.duration())/vp.framerate())&gt;0.67 else int(avgdets//2)))   # real-time throttle schedule
                         videotracks = videotracks[-numdets:] if (numdets is not None and len(videotracks)&gt;numdets) else videotracks   # select only the most confident for detection                
                     videotracks.sort(key=lambda v: v.actor().category())  # in-place, for grouping mirrored encoding: person&lt;vehicle
-                
-                    if len(videotracks)&gt;0 and (k+dt &gt; n):
+
+                    if len(videotracks)&gt;0 and (k+dt &gt; n): 
                         logits = self.forward(torch.stack(f_totensorlist(videotracks))) # augmented logits in track index order, copy
                         logits = f_reduce(logits, videotracks) if mirror else logits  # reduced logits in track index order
                         (actorid, actorcategory) = ([t.actorid() for t in videotracks], [t.actor().category() for t in videotracks])
                         dets = [vipy.activity.Activity(category=aa[category], shortlabel=self._class_to_shortlabel[category], startframe=k-n+dt, endframe=k+dt, confidence=sm, framerate=framerate, actorid=actorid[j], attributes={&#39;pip&#39;:category, &#39;logit&#39;:float(logit)})
                                 for (j, category_sm_logit) in enumerate(self.softmax(logits))  # (classname, softmax, logit), unsorted
-                                #for (j, category_sm_logit) in enumerate(self.logit_pooling(logits, aa))  # (classname, softmax, logit), softmax pooled over requested categories
                                 for (category, sm, logit) in category_sm_logit
                                 if ((category in aa) and   # requested activities only
-                                        (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
-                                        sm&gt;=minprob)]   # minimum probability for new activity detection
+                                    (actorcategory[j] in self._verb_to_noun[category]) and   # noun matching with category renaming dictionary
+                                    sm&gt;=minprob)]   # minimum probability for new activity detection
                         vo.assign(k+dt, dets, activityiou=activityiou, activitymerge=False, activitynms=True)   # assign new activity detections by non-maximum suppression (merge happens at the end)
                         del logits, dets, videotracks  # torch garabage collection
 
                     if not isinstance(finalized, bool) and k &gt; 0 and k%finalized == 0:
-                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5)  
+                        self.finalize(vo, trackconf=trackconf, startframe=k-finalized-5, endframe=k-5, mintracklen=mintracklen)  
                         
                     yield vo
 
@@ -1419,7 +1450,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 
         finally:
             if not (finalized is False):
-                self.finalize(vo, trackconf=trackconf) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k)</code></pre>
+                self.finalize(vo, trackconf=trackconf, mintracklen=mintracklen) if finalized == True else self.finalize(vo, trackconf=trackconf, startframe=(k//finalized)*finalized-4, endframe=k, mintracklen=mintracklen)</code></pre>
 </details>
 <h3>Ancestors</h3>
 <ul class="hlist">
@@ -1454,16 +1485,16 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.recognition.ActivityTracker.finalize"><code class="name flex">
-<span>def <span class="ident">finalize</span></span>(<span>self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None)</span>
+<span>def <span class="ident">finalize</span></span>(<span>self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>In place filtering of video to finalize</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L614-L744" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L645-L775" class="git-link">Browse git</a>
 </summary>
-<pre><code class="python">def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None):
+<pre><code class="python">def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None):
     &#34;&#34;&#34;In place filtering of video to finalize&#34;&#34;&#34;
     assert isinstance(vo, vipy.video.Scene)
 
@@ -1473,7 +1504,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
     # Bad tracks:  Remove low confidence or too short non-moving tracks, and associated activities
     # - will throw exception that &#39;vo referenced before assignment&#39; if one loop did not succceed
     if trackconf is not None:
-        vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=vo.framerate() and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
+        vo.trackfilter(lambda t: t.id() not in tofinalize or len(t)&gt;=(mintracklen if mintracklen is not None else vo.framerate()) and (t.confidence() &gt;= trackconf or t.startbox().iou(t.endbox()) == 0)).activityfilter(lambda a: a.id() not in tofinalize or a.actorid() in vo.tracks())  
     
     # Activity probability:  noun_probability*verb probability
     nounconf = {k:t.confidence(samples=8) for (k,t) in vo.tracks().items() if t.id() in tofinalize}   # 
@@ -1493,7 +1524,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
                                                                                          (abs(vo.track(a.actorid()).bearing_change(a.startframe(), a.endframe(), dt=vo.framerate(), samples=5)) &gt; (np.pi-(np.pi/2)))) else a)
     
     # Background activities:  Use logistic confidence on logit due to lack of background class &#34;person stands&#34;, otherwise every standing person is using a phone
-    if self._calibrated_constant is not None:
+    if self._calibrated_constant is not None:            
         f_logistic = lambda x,b,s=1.0: float(1.0 / (1.0 + np.exp(-s*(x + b))))
         vo.activitymap(lambda a: a.confidence(a.confidence()*f_logistic(a.attributes[&#39;logit&#39;], self._calibrated_constant)) if a.id() in tofinalize else a)  
         
@@ -1605,7 +1636,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L563-L577" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L594-L608" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     &#34;&#34;&#34;Overload forward for multi-gpu batch.  Don&#39;t use torch DataParallel!&#34;&#34;&#34;
@@ -1632,7 +1663,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L591-L601" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L622-L632" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def logit_pooling(self, x_logits, classmap):
     if self._logit_pooling is None:
@@ -1655,7 +1686,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L579-L589" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L610-L620" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def lrt(self, x_logits, lrt_threshold=None):
     &#34;&#34;&#34;top-k with likelihood ratio test with background null hypothesis&#34;&#34;&#34;
@@ -1678,7 +1709,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L603-L612" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L634-L643" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def softmax(self, x_logits):
     &#34;&#34;&#34;Return a list of lists [(class_label, float(softmax), float(logit) ... ] for all classes and batches&#34;&#34;&#34;
@@ -1700,7 +1731,7 @@ Don't use torch DataParallel!</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L556-L561" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L587-L592" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def temporal_stride(self, s=None):
     if s is not None:
@@ -1758,7 +1789,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L800-L803" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L831-L834" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class ActivityTrackerCap(ActivityTracker, CAP):
     def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-0.29, unitnorm=True):
@@ -1825,7 +1856,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L410-L514" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L415-L545" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
     def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-0.29, calibrated=False, unitnorm=True):
@@ -1844,20 +1875,46 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 
         if deterministic:
             np.random.seed(42)
-        
-        # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-        # - WARNING: under-represented classes are truncated at a maximum weight of one
-        # - python 3.7 can use importlib.resources
-        self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_training_weight.csv&#39;))}
-        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
-        # Generated using vipy.dataset.Dataset.class_to_index()
-        self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class.csv&#39;))}
+        version = 2
+        if version == 1:
+            print(&#39;[heyvi.recognition.CAP]: version == 1&#39;)  # cap_l2norm_e23s96095.ckpt and earlier
 
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            # - python 3.7 can use importlib.resources
+            self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_training_weight.csv&#39;))}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class.csv&#39;))}
+            self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+            
+            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
+            self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_shortlabel.csv&#39;)))
+            self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
+
+        elif version == 2:
+            print(&#39;[heyvi.recognition.CAP]: version==2&#39;)
+
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_index_to_training_weight.csv&#39;))}
+
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_class_to_index.csv&#39;))}
+            self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;coarse_index_to_class.csv&#39;))}
+
+            # Derived
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+            
         # Generated using vipy.dataset.Dataset.class_to_shortlabel()
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), &#39;model&#39;, &#39;cap&#39;, &#39;class_to_shortlabel.csv&#39;)))
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
-        
+
+
         # Calibration state: trained at validation epoch end
         if self._calibrated:
             self.register_buffer(&#39;_calibration_multiclass&#39;, torch.zeros(1,1))
@@ -1973,7 +2030,7 @@ This is useful for streaming activity detection on unbounded inputs. </p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L504-L514" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L535-L545" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def calibration(self, x_logits):
     assert torch.is_tensor(self._calibration_multiclass) and self._calibration_multiclass.shape == (1,1)
@@ -2042,7 +2099,7 @@ See the :ref:<code>multi_gpu</code> guide for more details.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L462-L465" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L493-L496" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_step_end(self, outputs):
     return {&#39;val_loss&#39;: outputs[&#39;val_loss&#39;],  
@@ -2075,7 +2132,7 @@ See the :ref:<code>multi_gpu</code> guide for more details.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L95-L293" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L95-L295" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_250k(pl.LightningModule, ActivityRecognition):
     &#34;&#34;&#34;Activity recognition using people in public - 250k stabilized&#34;&#34;&#34;
@@ -2145,12 +2202,14 @@ See the :ref:<code>multi_gpu</code> guide for more details.</p></div>
         y_hat_softmax = F.softmax(y_hat, dim=1)
 
         (loss, n_valid, y_validation) = (0, 0, [])
-        C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        #C = torch.tensor([self._index_to_training_weight[v] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+        C = torch.tensor([v for (k,v) in sorted(self._index_to_training_weight.items(), key=lambda x: x[0])], device=y_hat.device)  # inverse class frequency        
         for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
             labels = json.loads(labelstr)
             if labels is None:
                 continue  # skip me
             lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
+            lbllist = [l for l in lbllist if l in self._class_to_index]  # only allowable classes
             lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
             lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
             for (y,w) in lbl_weight.items():
@@ -2315,7 +2374,7 @@ See the :ref:<code>multi_gpu</code> guide for more details.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L211-L213" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L213-L215" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@classmethod
 def from_checkpoint(cls, checkpointpath):
@@ -2333,7 +2392,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L130-L132" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L130-L132" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -2348,7 +2407,7 @@ def from_checkpoint(cls, checkpointpath):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L134-L136" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L134-L136" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def category_confidence(self, x):
     yh = self.forward(x if x.ndim == 5 else torch.unsqueeze(x, 0))
@@ -2476,7 +2535,7 @@ or want to monitor a custom metric, you can specify these in a lr_dict:</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L153-L155" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L153-L155" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def configure_optimizers(self):
     optimizer = torch.optim.AdamW(self.parameters(), lr=1e-3)
@@ -2536,7 +2595,7 @@ def forward(self, batch):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L150-L151" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L150-L151" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.net(x)  # lighting handles device</code></pre>
@@ -2550,7 +2609,7 @@ def forward(self, batch):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L138-L141" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L138-L141" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -2566,7 +2625,7 @@ def forward(self, batch):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L143-L147" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L143-L147" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk_probability(self, x_logits, k):
     yh = x_logits.detach().cpu().numpy()
@@ -2583,7 +2642,7 @@ def forward(self, batch):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L288-L293" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L290-L295" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def totensor(self, v=None, training=False, validation=False, show=False, doflip=False):
     &#34;&#34;&#34;Return captured lambda function if v=None, else return tensor&#34;&#34;&#34;    
@@ -2653,7 +2712,7 @@ so it differs from the actual loss returned in train/validation step.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L157-L197" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L157-L199" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def training_step(self, batch, batch_nb, logging=True, valstep=False):
     (x,Y) = batch  
@@ -2661,12 +2720,14 @@ so it differs from the actual loss returned in train/validation step.</p></div>
     y_hat_softmax = F.softmax(y_hat, dim=1)
 
     (loss, n_valid, y_validation) = (0, 0, [])
-    C = torch.tensor([self._class_to_weight[k] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+    #C = torch.tensor([self._index_to_training_weight[v] for (k,v) in sorted(self._class_to_index.items(), key=lambda x: x[1])], device=y_hat.device)  # inverse class frequency        
+    C = torch.tensor([v for (k,v) in sorted(self._index_to_training_weight.items(), key=lambda x: x[0])], device=y_hat.device)  # inverse class frequency        
     for (yh, yhs, labelstr) in zip(y_hat, y_hat_softmax, Y):
         labels = json.loads(labelstr)
         if labels is None:
             continue  # skip me
         lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
+        lbllist = [l for l in lbllist if l in self._class_to_index]  # only allowable classes
         lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
         lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
         for (y,w) in lbl_weight.items():
@@ -2741,7 +2802,7 @@ each validation step for that dataloader.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L204-L208" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L206-L210" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_epoch_end(self, outputs):
     avg_loss = torch.stack([x[&#39;val_loss&#39;] for x in outputs]).mean()
@@ -2832,7 +2893,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L199-L202" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L201-L204" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def validation_step(self, batch, batch_nb):
     loss = self.training_step(batch, batch_nb, logging=False, valstep=True)[&#39;loss&#39;]
@@ -2851,7 +2912,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L297-L407" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L299-L412" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
@@ -2873,11 +2934,14 @@ the model goes back to training mode and gradients are enabled.</p></div>
             np.random.seed(42)
         
         # Generated using vipy.dataset.Dataset(...).multilabel_inverse_frequency_weight()
-        self._class_to_weight = {&#39;car_drops_off_person&#39;: 0.7858124882763793, &#39;car_moves&#39;: 0.18439798528529147, &#39;car_picks_up_person&#39;: 0.7380666753394193, &#39;car_reverses&#39;: 0.5753369570213479, &#39;car_starts&#39;: 0.47486292483745757, &#39;car_stops&#39;: 0.44244800737774037, &#39;car_turns_left&#39;: 0.7697107319736983, &#39;car_turns_right&#39;: 0.5412936796835607, &#39;hand_interacts_with_person&#39;: 0.2794031245117859, &#39;person_abandons_package&#39;: 1.0789960714517162, &#39;person_carries_heavy_object&#39;: 0.5032333530901552, &#39;person_closes_car_door&#39;: 0.46460114438995603, &#39;person_closes_car_trunk&#39;: 0.6824201392305784, &#39;person_closes_facility_door&#39;: 0.38990434394080076, &#39;person_embraces_person&#39;: 0.6457437695527715, &#39;person_enters_car&#39;: 0.6934926810021877, &#39;person_enters_scene_through_structure&#39;: 0.2586965095740063, &#39;person_exits_car&#39;: 0.6766386632434479, &#39;person_exits_scene_through_structure&#39;: 0.33054895987676847, &#39;person_interacts_with_laptop&#39;: 0.6720176496986436, &#39;person_loads_car&#39;: 0.6880555743488312, &#39;person_opens_car_door&#39;: 0.4069868136393968, &#39;person_opens_car_trunk&#39;: 0.6911966903970317, &#39;person_opens_facility_door&#39;: 0.3018924474724252, &#39;person_picks_up_object&#39;: 0.4298381074082487, &#39;person_purchases_from_cashier&#39;: 5.479834409621331, &#39;person_purchases_from_machine&#39;: 5.31528236654537, &#39;person_puts_down_object&#39;: 0.2804690906037155, &#39;person_reads_document&#39;: 0.5476186269530937, &#39;person_rides_bicycle&#39;: 1.6090962879286763, &#39;person_sits_down&#39;: 0.4750148103149501, &#39;person_stands_up&#39;: 0.5022364750834624, &#39;person_steals_object&#39;: 0.910991409921711, &#39;person_talks_on_phone&#39;: 0.15771902851484076, &#39;person_talks_to_person&#39;: 0.21362675034201736, &#39;person_texts_on_phone&#39;: 0.3328378404741194, &#39;person_transfers_object_to_car&#39;: 2.964890512157848, &#39;person_transfers_object_to_person&#39;: 0.6481292773603928, &#39;person_unloads_car&#39;: 0.515379337544623, &#39;person_walks&#39;: 6.341278284010202}
-        
+        self._class_to_training_weight = {&#39;car_drops_off_person&#39;: 0.7858124882763793, &#39;car_moves&#39;: 0.18439798528529147, &#39;car_picks_up_person&#39;: 0.7380666753394193, &#39;car_reverses&#39;: 0.5753369570213479, &#39;car_starts&#39;: 0.47486292483745757, &#39;car_stops&#39;: 0.44244800737774037, &#39;car_turns_left&#39;: 0.7697107319736983, &#39;car_turns_right&#39;: 0.5412936796835607, &#39;hand_interacts_with_person&#39;: 0.2794031245117859, &#39;person_abandons_package&#39;: 1.0789960714517162, &#39;person_carries_heavy_object&#39;: 0.5032333530901552, &#39;person_closes_car_door&#39;: 0.46460114438995603, &#39;person_closes_car_trunk&#39;: 0.6824201392305784, &#39;person_closes_facility_door&#39;: 0.38990434394080076, &#39;person_embraces_person&#39;: 0.6457437695527715, &#39;person_enters_car&#39;: 0.6934926810021877, &#39;person_enters_scene_through_structure&#39;: 0.2586965095740063, &#39;person_exits_car&#39;: 0.6766386632434479, &#39;person_exits_scene_through_structure&#39;: 0.33054895987676847, &#39;person_interacts_with_laptop&#39;: 0.6720176496986436, &#39;person_loads_car&#39;: 0.6880555743488312, &#39;person_opens_car_door&#39;: 0.4069868136393968, &#39;person_opens_car_trunk&#39;: 0.6911966903970317, &#39;person_opens_facility_door&#39;: 0.3018924474724252, &#39;person_picks_up_object&#39;: 0.4298381074082487, &#39;person_purchases_from_cashier&#39;: 5.479834409621331, &#39;person_purchases_from_machine&#39;: 5.31528236654537, &#39;person_puts_down_object&#39;: 0.2804690906037155, &#39;person_reads_document&#39;: 0.5476186269530937, &#39;person_rides_bicycle&#39;: 1.6090962879286763, &#39;person_sits_down&#39;: 0.4750148103149501, &#39;person_stands_up&#39;: 0.5022364750834624, &#39;person_steals_object&#39;: 0.910991409921711, &#39;person_talks_on_phone&#39;: 0.15771902851484076, &#39;person_talks_to_person&#39;: 0.21362675034201736, &#39;person_texts_on_phone&#39;: 0.3328378404741194, &#39;person_transfers_object_to_car&#39;: 2.964890512157848, &#39;person_transfers_object_to_person&#39;: 0.6481292773603928, &#39;person_unloads_car&#39;: 0.515379337544623, &#39;person_walks&#39;: 6.341278284010202}
+        self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+
         # Generated using vipy.dataset.Dataset(...).class_to_index()
         self._class_to_index = {&#39;car_drops_off_person&#39;: 0, &#39;car_moves&#39;: 1, &#39;car_picks_up_person&#39;: 2, &#39;car_reverses&#39;: 3, &#39;car_starts&#39;: 4, &#39;car_stops&#39;: 5, &#39;car_turns_left&#39;: 6, &#39;car_turns_right&#39;: 7, &#39;hand_interacts_with_person&#39;: 8, &#39;person_abandons_package&#39;: 9, &#39;person_carries_heavy_object&#39;: 10, &#39;person_closes_car_door&#39;: 11, &#39;person_closes_car_trunk&#39;: 12, &#39;person_closes_facility_door&#39;: 13, &#39;person_embraces_person&#39;: 14, &#39;person_enters_car&#39;: 15, &#39;person_enters_scene_through_structure&#39;: 16, &#39;person_exits_car&#39;: 17, &#39;person_exits_scene_through_structure&#39;: 18, &#39;person_interacts_with_laptop&#39;: 19, &#39;person_loads_car&#39;: 20, &#39;person_opens_car_door&#39;: 21, &#39;person_opens_car_trunk&#39;: 22, &#39;person_opens_facility_door&#39;: 23, &#39;person_picks_up_object&#39;: 24, &#39;person_purchases_from_cashier&#39;: 25, &#39;person_purchases_from_machine&#39;: 26, &#39;person_puts_down_object&#39;: 27, &#39;person_reads_document&#39;: 28, &#39;person_rides_bicycle&#39;: 29, &#39;person_sits_down&#39;: 30, &#39;person_stands_up&#39;: 31, &#39;person_steals_object&#39;: 32, &#39;person_talks_on_phone&#39;: 33, &#39;person_talks_to_person&#39;: 34, &#39;person_texts_on_phone&#39;: 35, &#39;person_transfers_object_to_car&#39;: 36, &#39;person_transfers_object_to_person&#39;: 37, &#39;person_unloads_car&#39;: 38, &#39;person_walks&#39;: 39}
         
+        self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
+
         self._verb_to_noun = {k:set([&#39;car&#39;,&#39;vehicle&#39;,&#39;motorcycle&#39;,&#39;bus&#39;,&#39;truck&#39;]) if (k.startswith(&#39;car&#39;) or k.startswith(&#39;motorcycle&#39;) or k.startswith(&#39;vehicle&#39;)) else set([&#39;person&#39;]) for k in self.classlist()}        
         self._class_to_shortlabel = heyvi.label.pip_to_shortlabel
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
@@ -3005,7 +3069,7 @@ the model goes back to training mode and gradients are enabled.</p></div>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/e8112b11725429ab0e4aa40e4d10046883ca1107/heyvi/recognition.py#L332-L336" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/b777230fd57f3518d96c8a0513d422decaf6e355/heyvi/recognition.py#L337-L341" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def topk(self, x, k=None):
     &#34;&#34;&#34;Return the top-k classes for a 3 second activity proposal along with framewise ground truth&#34;&#34;&#34;        
