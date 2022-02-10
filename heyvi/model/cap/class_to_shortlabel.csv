@@ -499,3 +499,4 @@ person_shakes_hand,Shakes hand
 person_takes_object_from_box,Takes object from box
 person_puts_object_into_box,Puts object into box
 person_cleans_eyeglasses,Cleans eyeglasses
+person_moves,Moves
