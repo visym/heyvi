@@ -95,7 +95,7 @@ class ActivityRecognition(object):
 class PIP_250k(pl.LightningModule, ActivityRecognition):
     """Activity recognition using people in public - 250k stabilized"""
     
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=True):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False):
 
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
@@ -298,7 +298,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
 class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=False, unitnorm=True):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -309,7 +309,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._mlfl = mlfl
         self._mlbl = mlbl
         self._calibrated = False
-        self._calibrated_constant = -0.29
+        self._calibrated_constant = -1.5
         self._unitnorm = unitnorm
 
         if deterministic:
@@ -413,7 +413,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-0.29, calibrated=False, unitnorm=True):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-1.5, calibrated=False, unitnorm=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -580,7 +580,7 @@ class ActivityTracker(PIP_370k):
         The input video is updated in place.
     
     """    
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=False, modelfile=None):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=True, modelfile=None):
         assert modelfile is not None, "Contact <info@visym.com> for access to non-public model files"
 
         super().__init__(pretrained=False, modelfile=modelfile, mlbl=mlbl, mlfl=mlfl)
@@ -846,9 +846,9 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-0.29, unitnorm=True):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-1.5, unitnorm=False):
         ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
         CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)
-        # FIXME: there is an issue with multiple inheritance and multi-gpu with default parameters here 
+        # FIXME: there is an issue with multiple inheritance and multi-gpu with default parameters here (unitnorm, mlfl), requires hardcoding currently 
 
 
