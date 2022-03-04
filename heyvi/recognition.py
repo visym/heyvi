@@ -430,7 +430,7 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         if deterministic:
             np.random.seed(42)
 
-        version = 3
+        version = 4
         if version == 1:
             print('[heyvi.recognition.CAP]: version == 1')  # cap_l2norm_e23s96095.ckpt and earlier
 
@@ -467,8 +467,21 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
             print('[heyvi.recognition.CAP]: version==3')
 
             # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-            # - WARNING: under-represented classes are truncated at a maximum weight of one
             self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_training_weight.csv'))}
+
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_class_to_index.csv'))}
+            self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_class.csv'))}
+
+            # Derived
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+
+        elif version == 4:
+            print('[heyvi.recognition.CAP]: version==4')
+
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'joint_background_index_to_training_weight.csv'))}
 
             # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_class_to_index.csv'))}
