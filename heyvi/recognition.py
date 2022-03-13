@@ -166,7 +166,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
             labels = json.loads(labelstr)
             if labels is None:
                 continue  # skip me
-            lbllist = [l for lbl in labels for l in lbl]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
+            lbllist = [l for lbl in labels for l in set(lbl)]  # list of multi-labels within clip (unpack from JSON to use default collate_fn)
             lbllist = [l for l in lbllist if l in self._class_to_index]  # only allowable classes
             lbl_frequency = vipy.util.countby(lbllist, lambda x: x)  # frequency within clip
             lbl_weight = {k:v/float(len(lbllist)) for (k,v) in lbl_frequency.items()}  # multi-label likelihood within clip, sums to one            
