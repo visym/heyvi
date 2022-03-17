@@ -95,7 +95,7 @@ class ActivityRecognition(object):
 class PIP_250k(pl.LightningModule, ActivityRecognition):
     """Activity recognition using people in public - 250k stabilized"""
     
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False, bgbce=False):
 
         # FIXME: remove dependencies here
         from heyvi.model.pyvideoresearch.bases.resnet50_3d import ResNet503D, ResNet3D, Bottleneck3D
@@ -108,6 +108,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
+        self._bgbce = True  # TESTING
         self._unitnorm = unitnorm
 
         if deterministic:
@@ -174,10 +175,14 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
                 if valstep:
                     # Pick all labels normalized (https://papers.nips.cc/paper/2019/file/da647c549dde572c2c5edc4f5bef039c-Paper.pdf
                     loss += float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
-                elif self._mlfl:
+                elif self._mlfl and not self._bgbce:
                     # Pick all labels normalized, with multi-label focal loss
                     loss += torch.min(torch.tensor(1.0, device=y_hat.device), ((w-yhs[self._class_to_index[y]])/w)**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
-                    
+                elif self._mlfl and self._bgbce:
+                    if self._index_to_class[self._class_to_index[y]].endswith('_moves'):  # background class (FIXME)
+                        loss += float(self._index_to_training_weight[self._class_to_index[y]])*float(w)*F.binary_cross_entropy_with_logits(torch.unsqueeze(yh, dim=0), torch.zeros_like(torch.unsqueeze(yh, dim=0))) # background regularization (all zeros)
+                    else:
+                        loss += torch.min(torch.tensor(1.0, device=y_hat.device), ((w-yhs[self._class_to_index[y]])/w)**2)*float(w)*F.cross_entropy(torch.unsqueeze(yh, dim=0), torch.tensor([self._class_to_index[y]], device=y_hat.device), weight=C)
                 elif self._mlbl:
                     # Pick all labels normalized with multi-label background loss
                     #j_bg_person = self._class_to_index['person'] if 'person' in self._class_to_index else self._class_to_index['person_walks']  # FIXME: does not generalize
@@ -298,7 +303,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
 
 class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
-    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False):
+    def __init__(self, pretrained=True, deterministic=False, modelfile=None, mlbl=False, mlfl=True, unitnorm=False, bgbce=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -310,6 +315,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._mlbl = mlbl
         self._calibrated = False
         self._calibrated_constant = -1.5
+        self._bgbce = True  # TESTING
         self._unitnorm = unitnorm
 
         if deterministic:
@@ -413,7 +419,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-1.5, calibrated=False, unitnorm=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-1.5, calibrated=False, unitnorm=False, bgbce=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -426,11 +432,12 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._calibrated_constant = calibrated_constant
         self._calibrated = calibrated
         self._unitnorm = unitnorm
+        self._bgbce = True  # TESTING
 
         if deterministic:
             np.random.seed(42)
 
-        version = 4
+        version = 3
         if version == 1:
             print('[heyvi.recognition.CAP]: version == 1')  # cap_l2norm_e23s96095.ckpt and earlier
 
