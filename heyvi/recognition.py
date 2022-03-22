@@ -108,7 +108,7 @@ class PIP_250k(pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-        self._bgbce = True  # TESTING
+        self._bgbce = bgbce
         self._unitnorm = unitnorm
 
         if deterministic:
@@ -314,8 +314,8 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._mlfl = mlfl
         self._mlbl = mlbl
         self._calibrated = False
-        self._calibrated_constant = -1.5
-        self._bgbce = True  # TESTING
+        self._calibrated_constant = None  # -1.5
+        self._bgbce = bgbce
         self._unitnorm = unitnorm
 
         if deterministic:
@@ -419,7 +419,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=-1.5, calibrated=False, unitnorm=False, bgbce=False):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=None, calibrated=False, unitnorm=False, bgbce=False):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -432,12 +432,13 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._calibrated_constant = calibrated_constant
         self._calibrated = calibrated
         self._unitnorm = unitnorm
-        self._bgbce = True  # TESTING
+        self._bgbce = bgbce
 
         if deterministic:
             np.random.seed(42)
 
-        version = 3
+        version = 5  
+        
         if version == 1:
             print('[heyvi.recognition.CAP]: version == 1')  # cap_l2norm_e23s96095.ckpt and earlier
 
@@ -497,6 +498,23 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
             # Derived
             self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            
+        elif version == 5:
+            print('[heyvi.recognition.CAP]: version == 5') 
+
+            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+            # - WARNING: under-represented classes are truncated at a maximum weight of one
+            # - python 3.7 can use importlib.resources
+            self._index_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'index_to_meva_training_weight.csv'))}
+            
+            # Generated using vipy.dataset.Dataset.class_to_index()
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] if v in self._index_to_training_weight else 0 for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility            
+
+            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
+            self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
+            self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
         else:
             raise
@@ -866,7 +884,7 @@ class ActivityTracker(PIP_370k):
 
 
 class ActivityTrackerCap(ActivityTracker, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=-1.5, unitnorm=False):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=None, unitnorm=False):
         ActivityTracker. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
         CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm)
         # FIXME: there is an issue with multiple inheritance and multi-gpu with default parameters here (unitnorm, mlfl), requires hardcoding currently 
