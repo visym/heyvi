@@ -313,7 +313,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
         self._std = [0.229, 0.224, 0.225]
         self._mlfl = mlfl
         self._mlbl = mlbl
-        self._calibrated = False
+        self._calibrated = False  # deprecated
         self._calibrated_constant = None  # -1.5
         self._bgbce = bgbce
         self._unitnorm = unitnorm
@@ -419,7 +419,7 @@ class PIP_370k(PIP_250k, pl.LightningModule, ActivityRecognition):
 
 
 class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
-    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=None, calibrated=False, unitnorm=False, bgbce=False, version=7):
+    def __init__(self, modelfile=None, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=None, unitnorm=False, bgbce=False, labelspace='cap_stabilized', verbose=True):
         pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
 
@@ -427,27 +427,26 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         self._num_frames = 16        
         self._mean = [0.485, 0.456, 0.406]
         self._std = [0.229, 0.224, 0.225]
-        self._mlfl = True
-        self._mlbl = False
+        self._mlfl = True  # deprecated
+        self._mlbl = False  # deprecated
         self._calibrated_constant = calibrated_constant
-        self._calibrated = calibrated
-        self._unitnorm = unitnorm
-        self._bgbce = bgbce
+        self._calibrated = False  # deprecated
+        self._unitnorm = unitnorm  # deprecated
+        self._bgbce = bgbce  # deprecated
 
         if deterministic:
             np.random.seed(42)
 
-        # FIXME: this versioning is lousy
-        if version == 1:
-            print('[heyvi.recognition.CAP]: version == 1')  # cap_l2norm_e23s96095.ckpt and earlier
+        valid_labelspace = ['cap_v1', 'cap_coarse', 'cap_bg', 'cap_jointbg', 'cap_mevaweight', 'cap', 'cap_stabilized']
+        d_version_to_labelspace = {k:v for (k,v) in enumerate(valid_labelspace, start=1)}  # legacy support
+        labelspace = d_version_to_labelspace[labelspace] if labelspace in d_version_to_labelspace else labelspace
 
+        if labelspace == 'cap_v1':
             # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
             # - WARNING: under-represented classes are truncated at a maximum weight of one
             # - python 3.7 can use importlib.resources
             self._class_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_training_weight.csv'))}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
-            
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
             self._index_to_training_weight = {self._class_to_index[k]:v for (k,v) in self._class_to_weight.items()}
             
@@ -455,108 +454,60 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
             self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
             self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
-        elif version == 2:
-            print('[heyvi.recognition.CAP]: version==2')
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-            # - WARNING: under-represented classes are truncated at a maximum weight of one
+        elif labelspace == 'cap_coarse':
             self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_index_to_training_weight.csv'))}
-
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_class_to_index.csv'))}
             self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_index_to_class.csv'))}
-
-            # Derived
             self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
-        elif version == 3:
-            print('[heyvi.recognition.CAP]: version==3')
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+        elif labelspace == 'cap_bg':
             self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_training_weight.csv'))}
-
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_class_to_index.csv'))}
             self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_class.csv'))}
-
-            # Derived
             self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
 
-        elif version == 4:
-            print('[heyvi.recognition.CAP]: version==4')
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+        elif labelspace == 'cap_jointbg':
             self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'joint_background_index_to_training_weight.csv'))}
-
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_class_to_index.csv'))}
             self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_class.csv'))}
-
-            # Derived
             self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
             
-        elif version == 5:
-            print('[heyvi.recognition.CAP]: version == 5') 
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
-            # - WARNING: under-represented classes are truncated at a maximum weight of one
-            # - python 3.7 can use importlib.resources
+        elif labelspace == 'cap_mevaweight':
             self._index_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'index_to_meva_training_weight.csv'))}
-            
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class.csv'))}
             self._class_to_training_weight = {k:self._index_to_training_weight[v] if v in self._index_to_training_weight else 0 for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility            
-
-            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
             self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
             self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
-        elif version == 6:
-            print('[heyvi.recognition.CAP]: version == 6') 
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+        elif labelspace == 'cap':
             self._index_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_training_weight.csv'))}
-            
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_class.csv'))}
             self._class_to_training_weight = {k:self._index_to_training_weight[v] if v in self._index_to_training_weight else 0 for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility            
-
-            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
             self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
             self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
-        elif version == 7:
-            print('[heyvi.recognition.CAP]: version == 7') 
-
-            # Generated using vipy.dataset.Dataset.multilabel_inverse_frequency_weight()
+        elif labelspace == 'cap_stabilized':
             self._index_to_training_weight = {k:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_stabilize_training_weight.csv'))}
-            
-            # Generated using vipy.dataset.Dataset.class_to_index()
             self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_stabilize_class.csv'))}
             self._class_to_training_weight = {k:self._index_to_training_weight[v] if v in self._index_to_training_weight else 0 for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility            
-
-            # Generated using vipy.dataset.Dataset.class_to_shortlabel()
             self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
             self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
         else:
-            raise
+            raise ValueError('Unknown labelspace "%s"' % labelspace)
+
+        if verbose:
+            print('[heyvi.recognition.CAP]: labelspace == %s' % labelspace)  
             
         # Generated using vipy.dataset.Dataset.class_to_shortlabel()
         self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
         self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
-
-
-        # Calibration state: trained at validation epoch end
-        if self._calibrated:
-            self.register_buffer('_calibration_multiclass', torch.zeros(1,1))
-            self.register_buffer('_calibration_binary', torch.zeros(3,self.num_classes()))
 
         if modelfile is not None:
             self._load_trained(modelfile)
@@ -583,30 +534,6 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
         avg_loss = torch.cat([x['val_loss'].flatten() for x in outputs]).mean()
         self.log('val_loss', avg_loss, on_epoch=True, prog_bar=False, logger=True)
         self.log('avg_val_loss', avg_loss, on_epoch=True, prog_bar=True, logger=True)  # for checkpointing
-
-        # Calibration: will be saved as registered buffer in checkpoint for calibration
-        if self._calibrated and self.trainer.is_global_zero:
-            from netcal.scaling import LogisticCalibration, TemperatureScaling
-            logits = torch.stack([x for output in outputs for x in output['logit']]).detach().cpu().numpy()
-            ground_truth = torch.cat([x.flatten() for output in outputs for x in output['classindex']]).flatten().detach().cpu().numpy()
-            multiclass = TemperatureScaling()
-            multiclass.fit(F.softmax(torch.from_numpy(logits), dim=1).cpu().numpy(), ground_truth)
-            binary = {k:(LogisticCalibration(), float(np.mean(logits[:,k]))) for k in sorted(self.class_to_index().values())}
-            for (k,(b,m)) in binary.items():
-                (binary_confidences, binary_ground_truth) = (torch.sigmoid(torch.from_numpy(logits[:,k]-m).flatten()).cpu().numpy(), np.array([1 if y==k else 0 for y in ground_truth]))
-                if np.any(binary_ground_truth):
-                    b.fit(binary_confidences, binary_ground_truth)
-                else:
-                    binary[k] = (None,0)  # no samples for calibration, prediction will always be zero
-
-            with torch.no_grad():
-                calibration_multiclass = torch.tensor(float(multiclass._sites['weights']['values']))
-                calibration_binary = torch.stack((torch.tensor([float(b._sites['weights']['values']) if b is not None else 0 for (k,(b,m)) in binary.items()]), 
-                                                  torch.tensor([float(b._sites['bias']['values']) if b is not None else 0 for (k,(b,m)) in binary.items()]), 
-                                                  torch.tensor([float(m) if b is not None else 0 for (k,(b,m)) in binary.items()])))
-            
-                self._calibration_multiclass[:] = calibration_multiclass.to(device=torch.device('cuda:0'))
-                self._calibration_binary[:] = calibration_binary.to(device=torch.device('cuda:0'))
     #---- </LIGHTNING>
         
     def totensor(self, v=None, training=False, validation=False, show=False, doflip=False, asjson=False):
@@ -616,17 +543,6 @@ class CAP(PIP_370k, pl.LightningModule, ActivityRecognition):
              PIP_370k._totensor(v, training, validation, input_size, num_frames, mean, std, noflip=['car_turns_left', 'car_turns_right', 'vehicle_turns_left', 'vehicle_turns_right', 'motorcycle_turns_left', 'motorcycle_turns_right'], show=show, doflip=doflip, asjson=asjson, classname=classname))
         return f(v) if v is not None else f
 
-    def calibration(self, x_logits):
-        assert torch.is_tensor(self._calibration_multiclass) and self._calibration_multiclass.shape == (1,1)
-        assert torch.is_tensor(self._calibration_binary) and self._calibration_binary.shape == (3, self.num_classes())
-        (n, T, (w,b,o), eps) = (self.num_classes(), self._calibration_multiclass, self._calibration_binary, np.finfo(np.float64).eps)  # (TemperatureScaling, PlattScaling=(weight, bias, offset))
-
-        lr = torch.from_numpy(np.multiply(1.0/(1+np.exp(-(np.multiply(np.array(w*0 + 1).reshape(1,n).astype(np.float64), scipy.special.logit(np.clip(torch.sigmoid(x_logits-o.view(1,n)).detach().cpu().numpy().astype(np.float64), eps, 1-eps))))+np.array(b).reshape(1,n).astype(np.float64))), (np.array(o)!=0).reshape(1,n)).astype(np.float32))
-        sm = F.softmax(torch.log(torch.clamp(F.softmax(x_logits, dim=1), eps, 1-eps)) / T, dim=1)
-        
-        #sm = F.softmax(x_logits / T, dim=1)  # temperature only
-        #lr = torch.multiply(torch.sigmoid(x_logits-o.view(1,n)+b.view(1,n)), (o!=0).view(1,n))   # bias only
-        return torch.multiply(sm, lr)
 
         
 class ActivityDetection(PIP_370k):
@@ -720,11 +636,8 @@ class ActivityDetection(PIP_370k):
         yh = x_logits.detach().cpu().numpy()
         yh_softmax = F.softmax(x_logits, dim=1).detach().cpu()
         d = self.index_to_class()
-        if not self._calibrated:
-            return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
-        else:
-            yh_softmax = self.calibration(x_logits)
-            return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]            
+        return [[(d[j], float(sm[j]), float(s[j])) for j in range(len(sm))] for (s,sm) in zip(yh, yh_softmax)]
+            
 
     def finalize(self, vo, trackconf=None, activityconf=None, startframe=None, endframe=None, mintracklen=None):
         """In place filtering of video to finalize"""
@@ -920,9 +833,9 @@ class Actev21_AD(ActivityDetection):
 
 
 class CAP_AD(ActivityDetection, CAP):
-    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=None, unitnorm=False, version=7):
+    def __init__(self, stride=3, activities=None, gpus=None, batchsize=None, calibrated=False, modelfile=None, calibrated_constant=None, unitnorm=False, labelspace='cap_stabilized'):
         ActivityDetection. __init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True, modelfile=modelfile)
-        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm, version=version)
+        CAP.__init__(self, modelfile=modelfile, deterministic=False, pretrained=None, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, calibrated=calibrated, unitnorm=unitnorm, labelspace=labelspace)
         # FIXME: there is an issue with multiple inheritance and multi-gpu with default parameters here (unitnorm, mlfl), requires hardcoding currently 
 
 
