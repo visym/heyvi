@@ -13,6 +13,8 @@ import heyvi.model.yolov5.models.yolo
 
 
 class TorchNet(object):
+    """Generic Torch Convolutional Network wrapper.   This is useful for parallelization and managing hardware resources. 
+    """
 
     def gpu(self, idlist=None, batchsize=None, n=None):
         assert batchsize is None or (isinstance(batchsize, int) and batchsize > 0), "Batchsize must be integer"
@@ -245,7 +247,10 @@ class ObjectDetector(Yolov5):
 
 
 class MultiscaleObjectDetector(ObjectDetector):  
-    """Given a list of images, break each one into a set of overlapping tiles, and ObjectDetector() on each, then recombining detections"""
+    """MultiscaleObjectDetector() class
+
+    - Given a list of images, break each one into a set of overlapping tiles, call ObjectDetector() on each, then recombine detections based on overlap
+    """
     def __call__(self, imlist, conf=0.5, iou=0.5, maxarea=1.0, objects=None, overlapfrac=6, filterborder=True, cover=0.7):  
         (f, n) = (super().__call__, self._mindim)
         assert isinstance(imlist, vipy.image.Image) or isinstance(imlist, list) and all([isinstance(im, vipy.image.Image) for im in imlist]), "invalid input"

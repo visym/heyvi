@@ -75,7 +75,7 @@ def process_video(videofilelist, activitylist, frameratelist, cliplist, strict=F
     objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle, no motorcycles
     track = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, weightfile=trackmodel, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=6, gate=64, detbatchsize=None)
     activities = list(pycollector.label.pip_plus_meva_to_meva.items())
-    detect = heyvi.recognition.ActivityTracker(gpus=[0,1,2,3], batchsize=64, modelfile=activitymodel, stride=3, activities=activities)   # stride should match tracker stride 4->3
+    detect = heyvi.recognition.Actev21_AD(gpus=[0,1,2,3], batchsize=64, modelfile=activitymodel, stride=3, activities=activities)   # stride should match tracker stride 4->3
 
     jsonlist = []
     outvideolist = []

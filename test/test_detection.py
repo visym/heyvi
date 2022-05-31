@@ -21,7 +21,9 @@ def test_object():
     
 
 def _test_actor_association():
+
     raise ValueError('FIXME: legacy test case")
+
 
     from pycollector.admin.video import Video  # admin only
     from pycollector.admin.globals import backend

@@ -3,13 +3,14 @@
 \"Hey Vi!\"
 -------------------
 
-HEYVI: Visym Analytics for Visual AI    
+HEYVI: Analytics for Visual AI    
 docs: https://developer.visym.com/heyvi
 
 HEYVI is a python package for visual AI that provides systems and trained models for activity detection and object tracking in videos.
 
 HEYVI provides:  
 
+* Real time activity detection of the [CAP activity classes](https://visym.github.io/cap)
 * Real time activity detection of the [MEVA activity classes](https://mevadata.org)
 * Real time visual object tracking in long duration videos
 * Live streaming of annotated videos to youtube live
