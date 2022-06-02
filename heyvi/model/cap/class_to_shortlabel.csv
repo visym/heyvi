@@ -500,3 +500,6 @@ person_takes_object_from_box,Takes object from box
 person_puts_object_into_box,Puts object into box
 person_cleans_eyeglasses,Cleans eyeglasses
 person_moves,Moves
+person_highfives_hand,Highfive
+person_steals_object_from_person,Steals
+person_hugs_person_from_side,Hugs
