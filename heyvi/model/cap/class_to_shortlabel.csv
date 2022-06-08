@@ -503,3 +503,6 @@ person_moves,Moves
 person_highfives_hand,Highfive
 person_steals_object_from_person,Steals
 person_hugs_person_from_side,Hugs
+person_puts_letters_in_mailbox,Puts in mailbox
+person_leans_agains_car,Leans against car
+person_takes_letters_from_mailbox,Takes from mailbox

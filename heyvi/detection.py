@@ -146,8 +146,9 @@ class Yolov5(TorchNet):
             fromdevice = [m(b)[0] for (m,b) in zip(self._models, todevice)]     # detection
         
             t_out = [torch.squeeze(t, dim=0) for d in fromdevice for t in torch.split(d, 1, 0)]   # unpack batch to list of detections per imag
-            t_out = [torch.cat((t[:,0:5], torch.argmax(t[:,5:], dim=1, keepdim=True)), dim=1) for t in t_out]  # filter argmax on device 
-            t_out = [t[t[:,4]>conf].cpu().detach().numpy() for t in t_out]  # filter conf on device (this must be last)
+            t_out = [torch.cat((x[:,0:5], torch.argmax(x[:,5:], dim=1, keepdim=True)), dim=1) for x in t_out]  # filter argmax on device 
+            t_out = [x[x[:,4]>conf].detach().cpu().numpy() for x in t_out]  # filter conf on device (this must be last)
+            del t, todevice, fromdevice 
 
         k_valid_objects = set([self._cls2index[k] for k in objects.keys()]) if objects is not None else self._cls2index.values()        
         for (im, dets) in zip(imlist, t_out):

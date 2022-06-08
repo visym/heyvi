@@ -169,24 +169,27 @@ class Tracker():
         `vipy.video.Scene` objects with tracks corresponding to objects in `heyvi.detection.MultiscaleVideoTracker.classlist`.  Object tracks are "person", "vehicle", "bicycle".
 
     """
-    def __init__(self):
+    def __init__(self, verbose=False):
         assert vipy.version.is_at_least('1.11.11')
         assert heyvi.version.is_at_least('0.0.5')        
         assert torch.cuda.device_count() >= 4
 
         objects = ['person', ('car','vehicle'), ('truck','vehicle'), ('bus', 'vehicle'), 'bicycle']  # merge truck/bus/car to vehicle 
         self._tracker = heyvi.detection.MultiscaleVideoTracker(gpu=[0,1,2,3], batchsize=9, minconf=0.05, trackconf=0.2, maxhistory=5, objects=objects, overlapfrac=0, gate=64, detbatchsize=None)  
-        
-    def __call__(self, vi, frame_callback=None, verbose=True):
+        self._verbose = verbose
+
+    def __call__(self, vi, frame_callback=None):
         """Batch tracking of input video file"""
         assert isinstance(vi, vipy.video.Scene)
 
         for (k, (im,v)) in enumerate(zip(vi.stream(buffered=True).frame(delay=5), self._tracker(vi, stride=3, buffered=vi.islive()))):
             if callable(frame_callback) and im is not None:
                 frame_callback(im)  
-            if verbose and v is not None:
+            if self._verbose and v is not None:
                 print('[heyvi.system.Tracker][%s][%d]: %s' % (timestamp(), k, str(v)+' '*100), end='\r')
+
         return vi
+
     
     def stream(self, vi):
         """Tracking iterator of input video"""        
@@ -296,7 +299,7 @@ class CAP():
                 print('[heyvi.system.CAP][%s][%d]: %s' % (heyvi.util.timestamp(), f, vi), end='\r')                                    
                 
         vi.activityfilter(lambda a: a.category() not in ['person', 'person_walks', 'vehicle', 'car_moves'])   # remove background activities
-        vo = vi.framerate(srcfps)  # upsample tracks/activities back to source framerate
+        vo = vi.framerate(srcfps).clone()  # upsample tracks/activities back to source framerate
         vo = vo.mindim(srcdim)  # upscale tracks back to source resolution
         gc.enable()
 
@@ -311,15 +314,16 @@ class CAP():
                           outfile=outfile))  # colored boxes by track id, activity captions with confidence, 5Hz, 512x(-1) resolution    
     
     
-    def detect(self, vi, minconf=0.15):
+    def detect(self, vi, minconf=0.01):
         assert isinstance(vi, vipy.video.Scene)
-        return self.__call__(vi.clone().clear().framerate(5), minconf=minconf)
+        return self.__call__(vi.clone().clear(), minconf=minconf, finalized=False)
 
     
-    def classify(self, vi, minconf=0.01, topk=3, repeat=3):
+    def classify(self, vi, minconf=0.001, topk=5, repeat=1):
         assert isinstance(vi, vipy.video.Scene)
-        v = vi.clone().clear().framerate(5).load()
-        v = v.fromframes([vj for k in range(repeat) for vj in v.framelist()], copy=True)  # repeat to achieve minimums
-        v = self.__call__(v, minconf=minconf, finalized=False)
-        ai = set([a.id() for a in sorted(v.activitylist(), key=lambda a: a.confidence())[-topk:]])
-        return v.activityfilter(lambda a: a.id() in ai).activities({a.id():a for a in sorted(v.activities().values(), key=lambda a: a.confidence(), reverse=True)})
+        v = vi.clone().clear().framerate(5)
+        v = v.load().fromframes([vj for k in range(repeat) for vj in v.framelist()], copy=True) if repeat>0 else v  # repeat to achieve minimums
+        vo = self.__call__(v, minconf=minconf, finalized=False)
+        ai = set([a.id() for a in sorted(vo.activitylist(), key=lambda a: a.confidence())[-topk:]])
+        return vo.flush().activityfilter(lambda a: a.id() in ai).activities({a.id():a for a in sorted(vo.activities().values(), key=lambda a: a.confidence(), reverse=True)})
+

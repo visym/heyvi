@@ -31,15 +31,19 @@ import heyvi.model.ResNets_3D_PyTorch.resnet
 class ActivityRecognition(object):
     def __init__(self):
         self.net =  None  # this requires overloading with a model 
-        self._class_to_index = {}
+        self._class_to_index = None
         self._index_to_class = None
         self._num_frames = 0
     
     def class_to_index(self, c=None):
+        if self._class_to_index is None:
+            assert self._index_to_class is not None
+            self._class_to_index = {v:k for (k,v) in self.index_to_class().items()}  # cache
         return self._class_to_index if c is None else self._class_to_index[c]
     
     def index_to_class(self, index=None):
         if self._index_to_class is None:
+            assert self._class_to_index is not None
             self._index_to_class = {v:k for (k,v) in self.class_to_index().items()}  # cache
         return self._index_to_class if index is None else self._index_to_class[index]
     
@@ -447,7 +451,7 @@ class CAP(pl.LightningModule, ActivityRecognition):
         if deterministic:
             np.random.seed(42)
 
-        valid_labelset = ['cap_v1', 'cap_coarse', 'cap_bg', 'cap_jointbg', 'cap_mevaweight', 'cap', 'cap_stabilized']
+        valid_labelset = ['cap_v1', 'cap_coarse', 'cap_bg', 'cap_jointbg', 'cap_mevaweight', 'cap', 'cap_stabilized', 'cap_coarsened']
         d_version_to_labelset = {k:v for (k,v) in enumerate(valid_labelset, start=1)}  # legacy support
         labelset = d_version_to_labelset[labelset] if labelset in d_version_to_labelset else labelset
 
@@ -513,6 +517,16 @@ class CAP(pl.LightningModule, ActivityRecognition):
             self._class_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
             self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
 
+        elif labelset == 'cap_coarsened':
+            self._index_to_training_weight = None
+            self._index_to_class = {int(v):k for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_coarsened_class.csv'))}  # 
+            self._class_to_training_weight = None
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility           
+            self._fineclass_to_shortlabel = dict(vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'class_to_shortlabel.csv')))
+            self._index_to_fineclass = {int(v):k for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_classification_pad_class.csv'))}
+            self._class_to_shortlabel = {c:c.split('_', 1)[1] for c in set(self._index_to_class.values())}
+            self._class_to_shortlabel.update( vipy.data.meva.d_category_to_shortlabel )
+
         else:
             raise ValueError('Unknown labelset "%s"' % labelset)
 
@@ -562,8 +576,10 @@ class CAP(pl.LightningModule, ActivityRecognition):
 
         
 class ActivityDetection(ActivityRecognition):
-    """Video Activity Detection.
+    """Video Activity Detection Base Class.
         
+    Usage:  This class must be a super-class for an ActivityDetection class with a target model, and should not be called directly.  See `heyvi.recognition.CAP_AD` for an example.
+
     Args (__call__):
         vi [generator of `vipy.video.Scene`]:  The input video to be updated in place with detections.  This is a generator which is output from heyvi.detection.MultiscaleVideoTracker.__call__
         activityiou [float]: The minimum temporal iou for activity assignment
@@ -615,16 +631,17 @@ class ActivityDetection(ActivityRecognition):
         if self._gpus is None:
             return super().forward(x)  # cpu
         else:
-            x_forward = None            
-            for b in x.pin_memory().split(self._batchsize_per_gpu*len(self._gpus)):  # pinned copy
-                n_todevice = np.sum(np.array([1 if k<len(b) else 0 for k in range(int(len(self._devices)*np.ceil(len(b)/len(self._devices))))]).reshape(-1, len(self._devices)), axis=0).tolist()
-                todevice = [t.to(d, non_blocking=True) for (t,d) in zip(b.split(n_todevice), self._devices) if len(t)>0]   # async device copy
-                ondevice = [m(t) for (m,t) in zip(self._gpus, todevice)]   # async
-                fromdevice = torch.cat([t.cpu() for t in ondevice], dim=0)
-                x_forward = fromdevice if x_forward is None else torch.cat((x_forward, fromdevice), dim=0)
-                del ondevice, todevice, fromdevice, b  # force garbage collection of GPU memory
-            del x  # force garbage collection
-            return x_forward
+            with torch.no_grad():
+                x_forward = None            
+                for b in x.pin_memory().split(self._batchsize_per_gpu*len(self._gpus)):  # pinned copy
+                    n_todevice = np.sum(np.array([1 if k<len(b) else 0 for k in range(int(len(self._devices)*np.ceil(len(b)/len(self._devices))))]).reshape(-1, len(self._devices)), axis=0).tolist()
+                    todevice = [t.to(d, non_blocking=True) for (t,d) in zip(b.split(n_todevice), self._devices) if len(t)>0]   # async device copy
+                    ondevice = [m(t) for (m,t) in zip(self._gpus, todevice)]   # async
+                    fromdevice = torch.cat([t.cpu() for t in ondevice], dim=0)
+                    x_forward = fromdevice if x_forward is None else torch.cat((x_forward, fromdevice), dim=0)
+                    del ondevice, todevice, fromdevice, b  # force garbage collection of GPU memory
+                del x  # force garbage collection
+                return x_forward
 
     def lrt(self, x_logits, lrt_threshold=None):
         """top-k with likelihood ratio test with background null hypothesis"""
@@ -845,15 +862,18 @@ class ActivityDetection(ActivityRecognition):
 
 
 class PIP_370k_AD(ActivityDetection, PIP_370k):
+    """heyvi.recognition.PIP_370k_AD().    PIP_370K activity detection"""
     def __init__(self, modelfile, stride=3, activities=None, gpus=None, batchsize=None, mlbl=False, mlfl=True):
         PIP_370k.__init__(self, modelfile=modelfile, deterministic=False, mlbl=None, mlfl=True)
         ActivityDetection.__init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True)
 
 class Actev21_AD(PIP_370k_AD):
+    """heyvi.recognition.Actev21_AD().    Actev21 activity detection, alias for `heyvi.recognition.PIP_370K_AD`"""
     pass
 
 
 class CAP_AD(ActivityDetection, CAP):
+    """heyvi.recognition.CAP_AD().   Consented Activities of People (CAP) Activity Detection """
     def __init__(self, modelfile, stride=3, activities=None, gpus=None, batchsize=None, calibrated_constant=None, unitnorm=False, labelset='cap', verbose=True):
         CAP.__init__(self, modelfile=modelfile, deterministic=False, mlbl=None, mlfl=True, calibrated_constant=calibrated_constant, unitnorm=unitnorm, labelset=labelset, verbose=verbose)
         ActivityDetection.__init__(self, stride=stride, activities=activities, gpus=gpus, batchsize=batchsize, mlbl=False, mlfl=True)
