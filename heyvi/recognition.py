@@ -432,10 +432,10 @@ class PIP_370k(pl.LightningModule, ActivityRecognition):
 
 
             
-class CAP(pl.LightningModule, ActivityRecognition):
+class CAP(ActivityRecognition, pl.LightningModule):
     def __init__(self, modelfile=None, deterministic=False, mlbl=None, mlfl=True, calibrated_constant=None, unitnorm=False, bgbce=False, labelset='cap', verbose=True):
-        pl.LightningModule.__init__(self)
         ActivityRecognition.__init__(self)  
+        pl.LightningModule.__init__(self)
 
         self._input_size = 112
         self._num_frames = 16        
@@ -451,7 +451,7 @@ class CAP(pl.LightningModule, ActivityRecognition):
         if deterministic:
             np.random.seed(42)
 
-        valid_labelset = ['cap_v1', 'cap_coarse', 'cap_bg', 'cap_jointbg', 'cap_mevaweight', 'cap', 'cap_stabilized', 'cap_coarsened']
+        valid_labelset = ['cap_v1', 'cap_coarse', 'cap_coarse_v2', 'cap_bg', 'cap_jointbg', 'cap_mevaweight', 'cap', 'cap_stabilized', 'cap_coarsened']
         d_version_to_labelset = {k:v for (k,v) in enumerate(valid_labelset, start=1)}  # legacy support
         labelset = d_version_to_labelset[labelset] if labelset in d_version_to_labelset else labelset
 
@@ -478,6 +478,14 @@ class CAP(pl.LightningModule, ActivityRecognition):
             self._index_to_class = {int(k):v for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'coarse_index_to_class.csv'))}
             self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
             self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+
+        elif labelset == 'cap_coarse_v2':
+            self._class_to_index = {k:int(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_coarse_class_to_index.csv'))}
+            self._index_to_training_weight = {self._class_to_index[k]:float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'cap_coarse_class_to_training_weight.csv'))}
+            self._index_to_class = {int(v):k for (k,v) in self._class_to_index.items()}
+            self._class_to_training_weight = {k:self._index_to_training_weight[v] for (k,v) in self._class_to_index.items()}
+            self._class_to_weight = self._class_to_training_weight  # backwards compatibility
+            self._class_to_shortlabel.update( {k:k.split('_',1)[1] for k in self._class_to_index.keys()} )
 
         elif labelset == 'cap_bg':
             self._index_to_training_weight = {int(k):float(v) for (k,v) in vipy.util.readcsv(os.path.join(os.path.dirname(heyvi.__file__), 'model', 'cap', 'background_index_to_training_weight.csv'))}
@@ -541,10 +549,6 @@ class CAP(pl.LightningModule, ActivityRecognition):
             self.net.conv1.in_channels = 4  # inflate RGB -> RGBA
             self.load_state_dict(torch.load(modelfile)['state_dict'])  # FIXME
             self.eval()
-        else:
-            #self._load_pretrained()
-            #self.net.fc = nn.Linear(self.net.fc.in_features, self.num_classes())
-            raise 
     
     #---- <LIGHTNING>
     def forward(self, x):

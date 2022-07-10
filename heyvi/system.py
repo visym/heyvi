@@ -324,6 +324,7 @@ class CAP():
         v = vi.clone().clear().framerate(5)
         v = v.load().fromframes([vj for k in range(repeat) for vj in v.framelist()], copy=True) if repeat>0 else v  # repeat to achieve minimums
         vo = self.__call__(v, minconf=minconf, finalized=False)
-        ai = set([a.id() for a in sorted(vo.activitylist(), key=lambda a: a.confidence())[-topk:]])
-        return vo.flush().activityfilter(lambda a: a.id() in ai).activities({a.id():a for a in sorted(vo.activities().values(), key=lambda a: a.confidence(), reverse=True)})
+        aid = set({a.category():a.id() for a in sorted(vo.activitylist(), key=lambda a: a.confidence())}.values())  # keep highest confidence activity id deduped per class
+        ai = set([a.id() for a in sorted(vo.activitylist(), key=lambda a: a.confidence()) if a.id() in aid][-topk:]) if topk is not None else aid  # top-k unique activity id
+        return vo.flush().activityfilter(lambda a: a.id() in ai).activities({a.id():a for a in sorted(vo.activities().values(), key=lambda a: a.confidence(), reverse=True)})  # reordered for primary_activity() highest confidence
 
