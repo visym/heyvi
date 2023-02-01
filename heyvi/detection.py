@@ -78,9 +78,9 @@ class FaceDetector(TorchNet):
         #else:
         #    self.cpu()
         
-    def __call__(self, im):
+    def __call__(self, im, minconf=None):
         assert isinstance(im, vipy.image.Image)
-        return vipy.image.Scene(array=im.numpy(), colorspace=im.colorspace(), objects=[vipy.object.Detection('face', xmin=bb[0], ymin=bb[1], width=bb[2], height=bb[3], confidence=bb[4]) for bb in self._model(im)]).union(im)
+        return vipy.image.Scene(array=im.numpy(), colorspace=im.colorspace(), objects=[vipy.object.Detection('face', xmin=bb[0], ymin=bb[1], width=bb[2], height=bb[3], confidence=bb[4]) for bb in self._model(im, minconf=minconf)]).union(im)
 
     def batchsize(self):
         return 1  # FIXME

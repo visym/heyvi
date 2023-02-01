@@ -101,9 +101,9 @@ class FaceRCNN(object):
         log_info('Init success; threshold {}'.format(self.conf_threshold))
 
 
-    def __call__(self, img, padding=0, min_face_size=DIM_THRESH):
+    def __call__(self, img, padding=0, min_face_size=DIM_THRESH, minconf=None):
         """Return list of [[x,y,w,h,conf],...] face detection"""
-        return self.detect(img, padding=padding, min_face_size=min_face_size)
+        return self.detect(img, padding=padding, min_face_size=min_face_size, minconf=minconf)
 
 
     def dets_to_scene(img, dets):
@@ -111,7 +111,7 @@ class FaceRCNN(object):
         return vipy.image.Scene(array=img, colorspace='rgb', objects=[vipy.object.Detection('face', xmin=bb[0], ymin=bb[1], width=bb[2], height=bb[3], confidence=bb[4]) for bb in dets])
 
         
-    def detect(self, image, padding=0, min_face_size=DIM_THRESH):
+    def detect(self, image, padding=0, min_face_size=DIM_THRESH, minconf=None):
         "Run detection on a numpy image, with specified padding and min size"
 
         # Input must be a np.array(), have a method image.numpy() or is convertible as np.array(image), otherwise error
@@ -123,7 +123,7 @@ class FaceRCNN(object):
             except:
                 raise ValueError('Input must be a numpy array')
         
-        
+        minconf = self.conf_threshold if minconf is None else minconf
         start_time = time.time()
         width = image.shape[1]
         height = image.shape[0]
@@ -191,7 +191,7 @@ class FaceRCNN(object):
             if current_rotation != 0:
                 keep = np.where(dets[:, 4] > self.rotate_thresh)
             else:
-                keep = np.where(dets[:, 4] > self.conf_threshold)
+                keep = np.where(dets[:, 4] > minconf)
             # print 'After filter for rotation {}: keep = {}'.format(current_rotation, keep)
             dets = dets[keep]
 
