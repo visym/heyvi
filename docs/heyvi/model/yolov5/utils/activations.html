@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>heyvi.model.yolov5.utils.activations API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L0-L71" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L1-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># Activation functions
 
@@ -124,7 +124,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -134,6 +134,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -141,7 +146,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L65-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L65-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class FReLU(nn.Module):
     def __init__(self, c1, k=3):  # ch_in, kernel
@@ -156,17 +161,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.utils.activations.FReLU.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.FReLU.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.FReLU.forward"><code class="name flex">
@@ -185,7 +179,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L71-L72" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L71-L72" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return torch.max(x, self.bn(self.conv(x)))</code></pre>
@@ -195,6 +189,7 @@ registered hooks while the latter silently ignores them.</p>
 </dd>
 <dt id="heyvi.model.yolov5.utils.activations.Hardswish"><code class="flex name class">
 <span>class <span class="ident">Hardswish</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -206,7 +201,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -216,6 +211,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -223,7 +223,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L15-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L15-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Hardswish(nn.Module):  # export-friendly version of nn.Hardswish()
     @staticmethod
@@ -235,17 +235,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.utils.activations.Hardswish.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.Hardswish.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Static methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.Hardswish.forward"><code class="name flex">
@@ -264,7 +253,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L16-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L16-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -276,6 +265,7 @@ def forward(x):
 </dd>
 <dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientMish"><code class="flex name class">
 <span>class <span class="ident">MemoryEfficientMish</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -287,7 +277,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -297,6 +287,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -304,7 +299,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L46-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L46-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MemoryEfficientMish(nn.Module):
     class F(torch.autograd.Function):
@@ -331,22 +326,18 @@ evaluation mode.
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.F"><code class="name">var <span class="ident">F</span></code></dt>
 <dd>
-<div class="desc"><p>Records operation history and defines formulas for differentiating ops.</p>
-<p>See the Note on extending the autograd engine for more details on how to use
-this class: <a href="https://pytorch.org/docs/stable/notes/extending.html#extending-torch-autograd">https://pytorch.org/docs/stable/notes/extending.html#extending-torch-autograd</a></p>
-<p>Every operation performed on :class:<code>Tensor</code> s creates a new function
-object, that performs the computation, and records that it happened.
-The history is retained in the form of a DAG of functions, with edges
-denoting data dependencies (<code>input &lt;- output</code>). Then, when backward is
-called, the graph is processed in the topological ordering, by calling
-:func:<code>backward</code> methods of each :class:<code>Function</code> object, and passing
-returned gradients on to next :class:<code>Function</code> s.</p>
-<p>Normally, the only way users interact with functions is by creating
-subclasses and defining new operations. This is a recommended way of
-extending torch.autograd.</p>
+<div class="desc"><p>Base class to create custom <code>autograd.Function</code></p>
+<p>To create a custom <code>autograd.Function</code>, subclass this class and implement
+the :meth:<code>forward</code> and :meth:<code>backward</code> static methods. Then, to use your custom
+op in the forward pass, call the class method <code>apply</code>. Do not call
+:meth:<code>forward</code> directly.</p>
+<p>To ensure correctness and best performance, make sure you are calling the
+correct methods on <code>ctx</code> and validating your backward function using
+:func:<code>torch.autograd.gradcheck</code>.</p>
+<p>See :ref:<code>extending-autograd</code> for more details on how to use this class.</p>
 <p>Examples::</p>
-<pre><code>&gt;&gt;&gt; class Exp(Function):
-&gt;&gt;&gt;
+<pre><code>&gt;&gt;&gt; # xdoctest: +REQUIRES(env:TORCH_DOCTEST_AUTOGRAD)
+&gt;&gt;&gt; class Exp(Function):
 &gt;&gt;&gt;     @staticmethod
 &gt;&gt;&gt;     def forward(ctx, i):
 &gt;&gt;&gt;         result = i.exp()
@@ -358,17 +349,10 @@ extending torch.autograd.</p>
 &gt;&gt;&gt;         result, = ctx.saved_tensors
 &gt;&gt;&gt;         return grad_output * result
 &gt;&gt;&gt;
-&gt;&gt;&gt; #Use it by calling the apply method:
+&gt;&gt;&gt; # Use it by calling the apply method:
+&gt;&gt;&gt; # xdoctest: +SKIP
 &gt;&gt;&gt; output = Exp.apply(input)
 </code></pre></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
 </dd>
 </dl>
 <h3>Methods</h3>
@@ -389,7 +373,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L60-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L60-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.F.apply(x)</code></pre>
@@ -399,6 +383,7 @@ registered hooks while the latter silently ignores them.</p>
 </dd>
 <dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish"><code class="flex name class">
 <span>class <span class="ident">MemoryEfficientSwish</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -410,7 +395,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -420,6 +405,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -427,7 +417,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L22-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L22-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class MemoryEfficientSwish(nn.Module):
     class F(torch.autograd.Function):
@@ -453,22 +443,18 @@ evaluation mode.
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.F"><code class="name">var <span class="ident">F</span></code></dt>
 <dd>
-<div class="desc"><p>Records operation history and defines formulas for differentiating ops.</p>
-<p>See the Note on extending the autograd engine for more details on how to use
-this class: <a href="https://pytorch.org/docs/stable/notes/extending.html#extending-torch-autograd">https://pytorch.org/docs/stable/notes/extending.html#extending-torch-autograd</a></p>
-<p>Every operation performed on :class:<code>Tensor</code> s creates a new function
-object, that performs the computation, and records that it happened.
-The history is retained in the form of a DAG of functions, with edges
-denoting data dependencies (<code>input &lt;- output</code>). Then, when backward is
-called, the graph is processed in the topological ordering, by calling
-:func:<code>backward</code> methods of each :class:<code>Function</code> object, and passing
-returned gradients on to next :class:<code>Function</code> s.</p>
-<p>Normally, the only way users interact with functions is by creating
-subclasses and defining new operations. This is a recommended way of
-extending torch.autograd.</p>
+<div class="desc"><p>Base class to create custom <code>autograd.Function</code></p>
+<p>To create a custom <code>autograd.Function</code>, subclass this class and implement
+the :meth:<code>forward</code> and :meth:<code>backward</code> static methods. Then, to use your custom
+op in the forward pass, call the class method <code>apply</code>. Do not call
+:meth:<code>forward</code> directly.</p>
+<p>To ensure correctness and best performance, make sure you are calling the
+correct methods on <code>ctx</code> and validating your backward function using
+:func:<code>torch.autograd.gradcheck</code>.</p>
+<p>See :ref:<code>extending-autograd</code> for more details on how to use this class.</p>
 <p>Examples::</p>
-<pre><code>&gt;&gt;&gt; class Exp(Function):
-&gt;&gt;&gt;
+<pre><code>&gt;&gt;&gt; # xdoctest: +REQUIRES(env:TORCH_DOCTEST_AUTOGRAD)
+&gt;&gt;&gt; class Exp(Function):
 &gt;&gt;&gt;     @staticmethod
 &gt;&gt;&gt;     def forward(ctx, i):
 &gt;&gt;&gt;         result = i.exp()
@@ -480,17 +466,10 @@ extending torch.autograd.</p>
 &gt;&gt;&gt;         result, = ctx.saved_tensors
 &gt;&gt;&gt;         return grad_output * result
 &gt;&gt;&gt;
-&gt;&gt;&gt; #Use it by calling the apply method:
+&gt;&gt;&gt; # Use it by calling the apply method:
+&gt;&gt;&gt; # xdoctest: +SKIP
 &gt;&gt;&gt; output = Exp.apply(input)
 </code></pre></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
 </dd>
 </dl>
 <h3>Methods</h3>
@@ -511,7 +490,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L35-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L35-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.F.apply(x)</code></pre>
@@ -521,6 +500,7 @@ registered hooks while the latter silently ignores them.</p>
 </dd>
 <dt id="heyvi.model.yolov5.utils.activations.Mish"><code class="flex name class">
 <span>class <span class="ident">Mish</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -532,7 +512,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -542,6 +522,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -549,7 +534,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L40-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L40-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Mish(nn.Module):
     @staticmethod
@@ -560,17 +545,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.utils.activations.Mish.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.Mish.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Static methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.Mish.forward"><code class="name flex">
@@ -589,7 +563,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L41-L43" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L41-L43" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -600,6 +574,7 @@ def forward(x):
 </dd>
 <dt id="heyvi.model.yolov5.utils.activations.Swish"><code class="flex name class">
 <span>class <span class="ident">Swish</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -611,7 +586,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -621,6 +596,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -628,7 +608,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L9-L12" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L9-L12" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Swish(nn.Module):  #
     @staticmethod
@@ -639,17 +619,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.utils.activations.Swish.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.utils.activations.Swish.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Static methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.utils.activations.Swish.forward"><code class="name flex">
@@ -668,7 +637,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/utils/activations.py#L10-L12" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/utils/activations.py#L10-L12" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -747,51 +716,39 @@ setTimeout(() => input.focus(), 100);
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.FReLU" href="#heyvi.model.yolov5.utils.activations.FReLU">FReLU</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.utils.activations.FReLU.dump_patches" href="#heyvi.model.yolov5.utils.activations.FReLU.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.FReLU.forward" href="#heyvi.model.yolov5.utils.activations.FReLU.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.FReLU.training" href="#heyvi.model.yolov5.utils.activations.FReLU.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.Hardswish" href="#heyvi.model.yolov5.utils.activations.Hardswish">Hardswish</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.utils.activations.Hardswish.dump_patches" href="#heyvi.model.yolov5.utils.activations.Hardswish.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.Hardswish.forward" href="#heyvi.model.yolov5.utils.activations.Hardswish.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.Hardswish.training" href="#heyvi.model.yolov5.utils.activations.Hardswish.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientMish" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientMish">MemoryEfficientMish</a></code></h4>
 <ul class="">
 <li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.F" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientMish.F">F</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.dump_patches" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientMish.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.forward" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientMish.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientMish.training" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientMish.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientSwish">MemoryEfficientSwish</a></code></h4>
 <ul class="">
 <li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.F" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.F">F</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.dump_patches" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.forward" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.training" href="#heyvi.model.yolov5.utils.activations.MemoryEfficientSwish.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.Mish" href="#heyvi.model.yolov5.utils.activations.Mish">Mish</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.utils.activations.Mish.dump_patches" href="#heyvi.model.yolov5.utils.activations.Mish.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.Mish.forward" href="#heyvi.model.yolov5.utils.activations.Mish.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.Mish.training" href="#heyvi.model.yolov5.utils.activations.Mish.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.utils.activations.Swish" href="#heyvi.model.yolov5.utils.activations.Swish">Swish</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.utils.activations.Swish.dump_patches" href="#heyvi.model.yolov5.utils.activations.Swish.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.utils.activations.Swish.forward" href="#heyvi.model.yolov5.utils.activations.Swish.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.utils.activations.Swish.training" href="#heyvi.model.yolov5.utils.activations.Swish.training">training</a></code></li>
 </ul>
 </li>
 </ul>
@@ -800,7 +757,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

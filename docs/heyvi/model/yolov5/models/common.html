@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>heyvi.model.yolov5.models.common API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L0-L194" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L1-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python"># This file contains modules common to various models
 
@@ -239,7 +239,7 @@ class Classify(nn.Module):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L22-L24" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L22-L24" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def DWConv(c1, c2, k=1, s=1, act=True):
     # Depthwise convolution
@@ -254,7 +254,7 @@ class Classify(nn.Module):
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L15-L19" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L15-L19" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def autopad(k, p=None):  # kernel, padding
     # Pad to &#39;same&#39;
@@ -282,7 +282,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -292,6 +292,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -299,7 +304,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L42-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L42-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Bottleneck(nn.Module):
     # Standard bottleneck
@@ -317,17 +322,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Bottleneck.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Bottleneck.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Bottleneck.forward"><code class="name flex">
@@ -346,7 +340,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L51-L52" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L51-L52" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return x + self.cv2(self.cv1(x)) if self.add else self.cv2(self.cv1(x))</code></pre>
@@ -368,7 +362,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -378,6 +372,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -385,7 +384,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L55-L71" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L55-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class BottleneckCSP(nn.Module):
     # CSP Bottleneck https://github.com/WongKinYiu/CrossStagePartialNetworks
@@ -409,17 +408,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.BottleneckCSP.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.BottleneckCSP.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.BottleneckCSP.forward"><code class="name flex">
@@ -438,7 +426,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L68-L71" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L68-L71" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     y1 = self.cv3(self.m(self.cv1(x)))
@@ -462,7 +450,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -472,6 +460,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -479,7 +472,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L185-L195" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L185-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Classify(nn.Module):
     # Classification head, i.e. x(b,c1,20,20) to x(b,c2)
@@ -497,17 +490,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Classify.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Classify.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Classify.forward"><code class="name flex">
@@ -526,7 +508,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L193-L195" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L193-L195" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     z = torch.cat([self.aap(y) for y in (x if isinstance(x, list) else [x])], 1)  # cat if list
@@ -549,7 +531,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -559,6 +541,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -566,7 +553,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L98-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L98-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Concat(nn.Module):
     # Concatenate a list of tensors along dimension
@@ -581,17 +568,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Concat.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Concat.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Concat.forward"><code class="name flex">
@@ -610,7 +586,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L104-L105" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L104-L105" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return torch.cat(x, self.d)</code></pre>
@@ -632,7 +608,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -642,6 +618,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -649,7 +630,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L27-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L27-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Conv(nn.Module):
     # Standard convolution
@@ -669,17 +650,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Conv.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Conv.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Conv.forward"><code class="name flex">
@@ -698,7 +668,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L35-L36" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L35-L36" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return self.act(self.bn(self.conv(x)))</code></pre>
@@ -712,7 +682,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L38-L39" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L38-L39" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fuseforward(self, x):
     return self.act(self.conv(x))</code></pre>
@@ -729,7 +699,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L122-L175" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L122-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Detections:
     # detections class for YOLOv5 inference results
@@ -796,7 +766,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L138-L154" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L138-L154" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def display(self, pprint=False, show=False, save=False):
     for i, (img, pred) in enumerate(zip(self.imgs, self.pred)):
@@ -825,7 +795,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L157-L158" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L157-L158" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def print(self):
     self.display(pprint=True)  # print results</code></pre>
@@ -839,7 +809,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L163-L164" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L163-L164" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def save(self):
     self.display(save=True)  # save results</code></pre>
@@ -853,7 +823,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L160-L161" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L160-L161" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def show(self):
     self.display(show=True)  # show results</code></pre>
@@ -867,7 +837,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L169-L175" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L169-L175" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def tolist(self):
     # return a list of Detections objects, i.e. &#39;for result in results.tolist():&#39;
@@ -882,6 +852,7 @@ registered hooks while the latter silently ignores them.</p>
 </dd>
 <dt id="heyvi.model.yolov5.models.common.Flatten"><code class="flex name class">
 <span>class <span class="ident">Flatten</span></span>
+<span>(</span><span>*args, **kwargs)</span>
 </code></dt>
 <dd>
 <div class="desc"><p>Base class for all neural network modules.</p>
@@ -893,7 +864,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -903,6 +874,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -910,7 +886,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L178-L182" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L178-L182" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Flatten(nn.Module):
     # Use after nn.AdaptiveAvgPool2d(1) to remove last 2 dimensions
@@ -922,17 +898,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Flatten.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Flatten.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Static methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Flatten.forward"><code class="name flex">
@@ -951,7 +916,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L180-L182" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L180-L182" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">@staticmethod
 def forward(x):
@@ -974,7 +939,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -984,6 +949,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -991,7 +961,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L88-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L88-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Focus(nn.Module):
     # Focus wh information into c-space
@@ -1006,17 +976,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.Focus.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.Focus.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.Focus.forward"><code class="name flex">
@@ -1035,7 +994,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L94-L95" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L94-L95" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):  # x(b,c,w,h) -&gt; y(b,4c,w/2,h/2)
     return self.conv(torch.cat([x[..., ::2, ::2], x[..., 1::2, ::2], x[..., ::2, 1::2], x[..., 1::2, 1::2]], 1))</code></pre>
@@ -1056,7 +1015,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -1066,6 +1025,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -1073,7 +1037,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L108-L118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L108-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class NMS(nn.Module):
     # Non-Maximum Suppression (NMS) module
@@ -1101,15 +1065,7 @@ evaluation mode.
 <dd>
 <div class="desc"></div>
 </dd>
-<dt id="heyvi.model.yolov5.models.common.NMS.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
 <dt id="heyvi.model.yolov5.models.common.NMS.iou"><code class="name">var <span class="ident">iou</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.NMS.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -1132,7 +1088,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L117-L118" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L117-L118" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     return non_max_suppression(x[0], conf_thres=self.conf, iou_thres=self.iou, classes=self.classes)</code></pre>
@@ -1154,7 +1110,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -1164,6 +1120,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -1171,7 +1132,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L74-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L74-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class SPP(nn.Module):
     # Spatial pyramid pooling layer used in YOLOv3-SPP
@@ -1190,17 +1151,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.common.SPP.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.common.SPP.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.common.SPP.forward"><code class="name flex">
@@ -1219,7 +1169,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/common.py#L83-L85" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/common.py#L83-L85" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     x = self.cv1(x)
@@ -1304,42 +1254,32 @@ setTimeout(() => input.focus(), 100);
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Bottleneck" href="#heyvi.model.yolov5.models.common.Bottleneck">Bottleneck</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Bottleneck.dump_patches" href="#heyvi.model.yolov5.models.common.Bottleneck.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Bottleneck.forward" href="#heyvi.model.yolov5.models.common.Bottleneck.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Bottleneck.training" href="#heyvi.model.yolov5.models.common.Bottleneck.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.BottleneckCSP" href="#heyvi.model.yolov5.models.common.BottleneckCSP">BottleneckCSP</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.BottleneckCSP.dump_patches" href="#heyvi.model.yolov5.models.common.BottleneckCSP.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.BottleneckCSP.forward" href="#heyvi.model.yolov5.models.common.BottleneckCSP.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.BottleneckCSP.training" href="#heyvi.model.yolov5.models.common.BottleneckCSP.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Classify" href="#heyvi.model.yolov5.models.common.Classify">Classify</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Classify.dump_patches" href="#heyvi.model.yolov5.models.common.Classify.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Classify.forward" href="#heyvi.model.yolov5.models.common.Classify.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Classify.training" href="#heyvi.model.yolov5.models.common.Classify.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Concat" href="#heyvi.model.yolov5.models.common.Concat">Concat</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Concat.dump_patches" href="#heyvi.model.yolov5.models.common.Concat.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Concat.forward" href="#heyvi.model.yolov5.models.common.Concat.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Concat.training" href="#heyvi.model.yolov5.models.common.Concat.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Conv" href="#heyvi.model.yolov5.models.common.Conv">Conv</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Conv.dump_patches" href="#heyvi.model.yolov5.models.common.Conv.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Conv.forward" href="#heyvi.model.yolov5.models.common.Conv.forward">forward</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Conv.fuseforward" href="#heyvi.model.yolov5.models.common.Conv.fuseforward">fuseforward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Conv.training" href="#heyvi.model.yolov5.models.common.Conv.training">training</a></code></li>
 </ul>
 </li>
 <li>
@@ -1355,36 +1295,28 @@ setTimeout(() => input.focus(), 100);
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Flatten" href="#heyvi.model.yolov5.models.common.Flatten">Flatten</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Flatten.dump_patches" href="#heyvi.model.yolov5.models.common.Flatten.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Flatten.forward" href="#heyvi.model.yolov5.models.common.Flatten.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Flatten.training" href="#heyvi.model.yolov5.models.common.Flatten.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.Focus" href="#heyvi.model.yolov5.models.common.Focus">Focus</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.Focus.dump_patches" href="#heyvi.model.yolov5.models.common.Focus.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.Focus.forward" href="#heyvi.model.yolov5.models.common.Focus.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.Focus.training" href="#heyvi.model.yolov5.models.common.Focus.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.NMS" href="#heyvi.model.yolov5.models.common.NMS">NMS</a></code></h4>
-<ul class="two-column">
+<ul class="">
 <li><code><a title="heyvi.model.yolov5.models.common.NMS.classes" href="#heyvi.model.yolov5.models.common.NMS.classes">classes</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.NMS.conf" href="#heyvi.model.yolov5.models.common.NMS.conf">conf</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.NMS.dump_patches" href="#heyvi.model.yolov5.models.common.NMS.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.NMS.forward" href="#heyvi.model.yolov5.models.common.NMS.forward">forward</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.NMS.iou" href="#heyvi.model.yolov5.models.common.NMS.iou">iou</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.NMS.training" href="#heyvi.model.yolov5.models.common.NMS.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.common.SPP" href="#heyvi.model.yolov5.models.common.SPP">SPP</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.common.SPP.dump_patches" href="#heyvi.model.yolov5.models.common.SPP.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.common.SPP.forward" href="#heyvi.model.yolov5.models.common.SPP.forward">forward</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.common.SPP.training" href="#heyvi.model.yolov5.models.common.SPP.training">training</a></code></li>
 </ul>
 </li>
 </ul>
@@ -1393,7 +1325,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>

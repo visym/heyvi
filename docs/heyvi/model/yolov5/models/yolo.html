@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1" />
-<meta name="generator" content="pdoc 0.9.2" />
+<meta name="generator" content="pdoc 0.10.0" />
 <title>heyvi.model.yolov5.models.yolo API documentation</title>
 <meta name="description" content="" />
 <link rel="preload stylesheet" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/10up-sanitize.css/11.0.1/sanitize.min.css" integrity="sha256-PK9q560IAAa6WVRRh76LtCaI8pjTJ2z11v0miyNNjrs=" crossorigin>
@@ -25,7 +25,7 @@
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L0-L283" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L1-L284" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">import argparse
 import logging
@@ -328,7 +328,7 @@ if __name__ == &#39;__main__&#39;:
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L199-L259" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L199-L259" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def parse_model(d, ch):  # model_dict, input_channels(3)
     logger.info(&#39;\n%3s%18s%3s%10s  %-40s%-30s&#39; % (&#39;&#39;, &#39;from&#39;, &#39;n&#39;, &#39;params&#39;, &#39;module&#39;, &#39;arguments&#39;))
@@ -412,7 +412,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -422,6 +422,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -429,7 +434,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L27-L66" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L27-L66" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Detect(nn.Module):
     stride = None  # strides computed during build
@@ -478,19 +483,11 @@ evaluation mode.
 </ul>
 <h3>Class variables</h3>
 <dl>
-<dt id="heyvi.model.yolov5.models.yolo.Detect.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
 <dt id="heyvi.model.yolov5.models.yolo.Detect.export"><code class="name">var <span class="ident">export</span></code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
 <dt id="heyvi.model.yolov5.models.yolo.Detect.stride"><code class="name">var <span class="ident">stride</span></code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.yolo.Detect.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
 <dd>
 <div class="desc"></div>
 </dd>
@@ -513,7 +510,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L43-L61" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L43-L61" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x):
     # x = x.copy()  # for profiling
@@ -552,7 +549,7 @@ import torch.nn.functional as F
 
 class Model(nn.Module):
     def __init__(self):
-        super(Model, self).__init__()
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 20, 5)
         self.conv2 = nn.Conv2d(20, 20, 5)
 
@@ -562,6 +559,11 @@ class Model(nn.Module):
 </code></pre>
 <p>Submodules assigned in this way will be registered, and will have their
 parameters converted too when you call :meth:<code>to</code>, etc.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>As per the example above, an <code>__init__()</code> call to the parent class
+must be made before assignment on the child.</p>
+</div>
 <p>:ivar training: Boolean represents whether this module is in training or
 evaluation mode.
 :vartype training: bool</p>
@@ -569,7 +571,7 @@ evaluation mode.
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L69-L196" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L69-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">class Model(nn.Module):
     def __init__(self, cfg=&#39;yolov5s.yaml&#39;, ch=3, nc=None):  # model, input channels, number of classes
@@ -704,17 +706,6 @@ evaluation mode.
 <ul class="hlist">
 <li>torch.nn.modules.module.Module</li>
 </ul>
-<h3>Class variables</h3>
-<dl>
-<dt id="heyvi.model.yolov5.models.yolo.Model.dump_patches"><code class="name">var <span class="ident">dump_patches</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-<dt id="heyvi.model.yolov5.models.yolo.Model.training"><code class="name">var <span class="ident">training</span> : bool</code></dt>
-<dd>
-<div class="desc"></div>
-</dd>
-</dl>
 <h3>Methods</h3>
 <dl>
 <dt id="heyvi.model.yolov5.models.yolo.Model.forward"><code class="name flex">
@@ -733,7 +724,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L103-L121" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L103-L121" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward(self, x, augment=False, profile=False):
     if augment:
@@ -764,7 +755,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L123-L142" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L123-L142" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def forward_once(self, x, profile=False):
     y, dt = [], []  # outputs
@@ -796,7 +787,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L165-L173" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L165-L173" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def fuse(self):  # fuse model Conv2d() + BatchNorm2d() layers
     #print(&#39;Fusing layers... &#39;)  # JEBYRNE
@@ -817,7 +808,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L195-L196" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L195-L196" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def info(self, verbose=False, img_size=640):  # print model information
     model_info(self, verbose, img_size)</code></pre>
@@ -831,7 +822,7 @@ registered hooks while the latter silently ignores them.</p>
 <details class="source">
 <summary>
 <span>Expand source code</span>
-<a href="https://github.com/visym/heyvi/blob/0798a717a5f2377ade0d538edb7e373e8dfa5d1b/heyvi/model/yolov5/models/yolo.py#L175-L187" class="git-link">Browse git</a>
+<a href="https://github.com/visym/heyvi/blob/beb00b2898cc119221c6a991b90a93e03ea61c73/heyvi/model/yolov5/models/yolo.py#L175-L187" class="git-link">Browse git</a>
 </summary>
 <pre><code class="python">def nms(self, mode=True):  # add or remove NMS module
     present = type(self.model[-1]) is NMS  # last layer is NMS
@@ -925,23 +916,19 @@ setTimeout(() => input.focus(), 100);
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.yolo.Detect" href="#heyvi.model.yolov5.models.yolo.Detect">Detect</a></code></h4>
 <ul class="">
-<li><code><a title="heyvi.model.yolov5.models.yolo.Detect.dump_patches" href="#heyvi.model.yolov5.models.yolo.Detect.dump_patches">dump_patches</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Detect.export" href="#heyvi.model.yolov5.models.yolo.Detect.export">export</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Detect.forward" href="#heyvi.model.yolov5.models.yolo.Detect.forward">forward</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Detect.stride" href="#heyvi.model.yolov5.models.yolo.Detect.stride">stride</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.yolo.Detect.training" href="#heyvi.model.yolov5.models.yolo.Detect.training">training</a></code></li>
 </ul>
 </li>
 <li>
 <h4><code><a title="heyvi.model.yolov5.models.yolo.Model" href="#heyvi.model.yolov5.models.yolo.Model">Model</a></code></h4>
-<ul class="two-column">
-<li><code><a title="heyvi.model.yolov5.models.yolo.Model.dump_patches" href="#heyvi.model.yolov5.models.yolo.Model.dump_patches">dump_patches</a></code></li>
+<ul class="">
 <li><code><a title="heyvi.model.yolov5.models.yolo.Model.forward" href="#heyvi.model.yolov5.models.yolo.Model.forward">forward</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Model.forward_once" href="#heyvi.model.yolov5.models.yolo.Model.forward_once">forward_once</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Model.fuse" href="#heyvi.model.yolov5.models.yolo.Model.fuse">fuse</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Model.info" href="#heyvi.model.yolov5.models.yolo.Model.info">info</a></code></li>
 <li><code><a title="heyvi.model.yolov5.models.yolo.Model.nms" href="#heyvi.model.yolov5.models.yolo.Model.nms">nms</a></code></li>
-<li><code><a title="heyvi.model.yolov5.models.yolo.Model.training" href="#heyvi.model.yolov5.models.yolo.Model.training">training</a></code></li>
 </ul>
 </li>
 </ul>
@@ -950,7 +937,7 @@ setTimeout(() => input.focus(), 100);
 </nav>
 </main>
 <footer id="footer">
-<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.9.2</a>.</p>
+<p>Generated by <a href="https://pdoc3.github.io/pdoc" title="pdoc: Python API documentation generator"><cite>pdoc</cite> 0.10.0</a>.</p>
 </footer>
 </body>
 </html>
